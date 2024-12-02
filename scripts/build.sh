@@ -40,6 +40,7 @@ PACKAGES=(
     "plugin-evm"
     "plugin-image-generation"
     "plugin-tee"
+    "plugin-meme-father"
     "client-auto"
     "client-direct"
     "client-discord"

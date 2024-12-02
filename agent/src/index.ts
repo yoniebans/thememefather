@@ -34,6 +34,7 @@ import { evmPlugin } from "@ai16z/plugin-evm";
 import { createNodePlugin } from "@ai16z/plugin-node";
 import { solanaPlugin } from "@ai16z/plugin-solana";
 import { teePlugin } from "@ai16z/plugin-tee";
+import { memeFatherPlugin } from "@ai16z/plugin-meme-father";
 
 import buttplugPlugin from "@ai16z/plugin-buttplug";
 import Database from "better-sqlite3";
@@ -92,7 +93,7 @@ export async function loadCharacters(
         for (const characterPath of characterPaths) {
             let content = null;
             let resolvedPath = "";
-            
+
             // Try different path resolutions in order
             const pathsToTry = [
                 characterPath, // exact path as specified
@@ -314,11 +315,12 @@ export function createAgent(
                 ? coinbaseCommercePlugin
                 : null,
             getSecret(character, "COINBASE_API_KEY") &&
-            getSecret(character, "COINBASE_PRIVATE_KEY")
+                getSecret(character, "COINBASE_PRIVATE_KEY")
                 ? coinbaseMassPaymentsPlugin
                 : null,
             getSecret(character, "BUTTPLUG_API_KEY") ? buttplugPlugin : null,
             getSecret(character, "WALLET_SECRET_SALT") ? teePlugin : null,
+            memeFatherPlugin,
         ].filter(Boolean),
         providers: [],
         actions: [],
