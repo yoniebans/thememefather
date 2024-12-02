@@ -10,6 +10,7 @@
         "start": "pnpm --filter \"@ai16z/agent\" start --isRoot",
         "start:client": "pnpm --dir client start --isRoot",
         "dev": "bash ./scripts/dev.sh",
+        "dev-new": "bash ./scripts/dev_new.sh",
         "lint": "bash ./scripts/lint.sh",
         "prettier-check": "npx prettier --check .",
         "prettier": "npx prettier --write .",

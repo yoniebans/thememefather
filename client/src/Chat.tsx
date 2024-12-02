@@ -11,23 +11,25 @@ type TextResponse = {
 };
 
 export default function Chat() {
-    const { agentId } = useParams();
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<TextResponse[]>([]);
 
     const mutation = useMutation({
         mutationFn: async (text: string) => {
-            const res = await fetch(`/api/${agentId}/message`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    text,
-                    userId: "user",
-                    roomId: `default-room-${agentId}`,
-                }),
-            });
+            const res = await fetch(
+                `/api/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/message`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        text,
+                        userId: "user",
+                        roomId: `frontend`,
+                    }),
+                }
+            );
             return res.json() as Promise<TextResponse[]>;
         },
         onSuccess: (data) => {

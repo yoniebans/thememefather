@@ -1,8 +1,8 @@
-#root {
+/* #root {
     max-width: 1280px;
     margin: 0 auto;
     text-align: center;
-}
+} */
 
 .logo {
     height: 6em;
@@ -38,4 +38,17 @@
 
 .read-the-docs {
     color: #888;
+}
+
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 20s linear infinite;
 }
