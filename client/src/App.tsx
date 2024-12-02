@@ -8,18 +8,27 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import eldonImage from "@/assets/eldon.png";
-import { WalletButton } from '@/components/WalletButton';
+import { WalletButton } from "@/components/WalletButton";
+import { WalletProvider, useWallet } from "@/context/WalletContext";
 
 type TextResponse = {
     text: string;
     user: string;
 };
 
-function App() {
+function AppContent() {
+    const { connected, publicKey } = useWallet();
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<TextResponse[]>([]);
     const [showChat, setShowChat] = useState(false);
     const [loadingDots, setLoadingDots] = useState(".");
+
+    useEffect(() => {
+        if (!connected) {
+            setMessages([]);
+            setShowChat(false);
+        }
+    }, [connected, publicKey]);
 
     const mutation = useMutation({
         mutationFn: async (text: string) => {
@@ -32,7 +41,7 @@ function App() {
                     },
                     body: JSON.stringify({
                         text,
-                        userId: "user",
+                        userId: publicKey,
                         roomId: "meme-generation-frontend",
                     }),
                 }
@@ -165,7 +174,12 @@ function App() {
                             variant="outline"
                             size="icon"
                             className="bg-[#0088cc] hover:bg-[#0088cc]/90 text-white rounded-xl"
-                            onClick={() => window.open("https://github.com/yoniebans/the_mf", "_blank")}
+                            onClick={() =>
+                                window.open(
+                                    "https://github.com/yoniebans/the_mf",
+                                    "_blank"
+                                )
+                            }
                         >
                             <Github className="h-4 w-4" />
                         </Button>
@@ -196,8 +210,11 @@ function App() {
                                     <Button
                                         className="text-xl px-8 py-6 bg-pink-500 hover:bg-pink-600 rounded-xl font-bold shadow-lg hover:shadow-pink-500/25 transition-all duration-300"
                                         onClick={() => setShowChat(true)}
+                                        disabled={!connected}
                                     >
-                                        SPEAK WITH THE FATHER
+                                        {connected
+                                            ? "SPEAK WITH THE FATHER"
+                                            : "CONNECT WALLET TO SPEAK"}
                                     </Button>
                                 </div>
                             </div>
@@ -294,4 +311,10 @@ function App() {
     );
 }
 
-export default App;
+export default function App() {
+    return (
+        <WalletProvider>
+            <AppContent />
+        </WalletProvider>
+    );
+}

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Wallet } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Wallet } from "lucide-react";
+import { useWallet } from "@/context/WalletContext";
 
 type PhantomProvider = {
     connect: () => Promise<{ publicKey: { toString: () => string } }>;
@@ -16,8 +17,7 @@ declare global {
 
 export function WalletButton() {
     const [phantom, setPhantom] = useState<PhantomProvider | null>(null);
-    const [connected, setConnected] = useState(false);
-    const [publicKey, setPublicKey] = useState<string | null>(null);
+    const { connected, setConnected, publicKey, setPublicKey } = useWallet();
 
     useEffect(() => {
         if ("solana" in window) {
@@ -28,10 +28,11 @@ export function WalletButton() {
     const connectWallet = async () => {
         try {
             const { solana } = window;
-            
+
             if (solana) {
                 const response = await solana.connect();
-                setPublicKey(response.publicKey.toString());
+                const key = response.publicKey.toString();
+                setPublicKey(key);
                 setConnected(true);
             }
         } catch (error) {
@@ -42,7 +43,7 @@ export function WalletButton() {
     const disconnectWallet = async () => {
         try {
             const { solana } = window;
-            
+
             if (solana) {
                 await solana.disconnect();
                 setPublicKey(null);
@@ -57,7 +58,7 @@ export function WalletButton() {
         return (
             <Button
                 variant="outline"
-                onClick={() => window.open('https://phantom.app/', '_blank')}
+                onClick={() => window.open("https://phantom.app/", "_blank")}
                 className="bg-purple-500 hover:bg-purple-600 text-white"
             >
                 <Wallet className="h-4 w-4 mr-2" />
@@ -85,4 +86,4 @@ export function WalletButton() {
             Connect Wallet
         </Button>
     );
-} 
+}
