@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import eldonImage from "@/assets/eldon.png";
+import { WalletButton } from '@/components/WalletButton';
 
 type TextResponse = {
     text: string;
@@ -145,6 +146,7 @@ function App() {
             <div className="min-h-screen relative w-full flex flex-col bg-[url('/src/assets/background.png')] bg-cover bg-center bg-no-repeat">
                 {/* Social Links */}
                 <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <WalletButton />
                     <div className="flex gap-2">
                         <Button
                             variant="outline"
