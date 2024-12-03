@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import fontboltImage from "@/assets/fontbolt.png";
 import whatscookingImage from "@/assets/whats_cooking.png";
+import theplugImage from "@/assets/the_plug.png";
 import skylineImage from "@/assets/skyline_v2.png";
 import { WalletButton } from "@/components/WalletButton";
 import { WalletProvider, useWallet } from "@/context/WalletContext";
@@ -143,6 +144,83 @@ function AppContent() {
                                           {text}
                                       </span>
                                   ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* The Plug Section */}
+            <div className="relative w-full flex flex-col bg-cover bg-center bg-no-repeat bg-black/95">
+                <div className="w-full h-full backdrop-blur-sm bg-black/10 py-16">
+                    <div className="container mx-auto px-4">
+                        <div className="mb-4">
+                            <img
+                                src={theplugImage}
+                                alt="the plug"
+                                className="h-12 w-auto"
+                            />
+                        </div>
+                        {/* Flowchart Container */}
+                        <div className="relative flex flex-col items-center">
+                            {/* Blob Container */}
+                            <div className="w-full flex flex-wrap justify-between items-center gap-8 md:gap-4">
+                                {/* Blob 1 - Interactions */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        01_interactions {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        web app console & twitter. the meme father
+                                        acquires knowledge and ideas from
+                                        interactions
+                                    </p>
+                                </div>
+
+                                {/* Blob 2 - Ideation */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        02_ideation {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        the meme father spawns new memes into life.
+                                        They go into the melting pot as candidates
+                                        for launch
+                                    </p>
+                                </div>
+
+                                {/* Blob 3 - Classification */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        03_classification {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        the meme father mulls over these ideas
+                                        daily. he ranks them based on memetic power
+                                    </p>
+                                </div>
+
+                                {/* Blob 4 - Launch */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        04_launch {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        every seventh day, he births a new meme on
+                                        pump.fun and communicates via his channels
+                                    </p>
+                                </div>
+
+                                {/* Blob 5 - Reset */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        05_reset {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        the slate is cleaned and the process
+                                        repeats. Only the best memes make the cut
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
