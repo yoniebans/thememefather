@@ -4,6 +4,8 @@ import { Github, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import fontboltImage from "@/assets/fontbolt.png";
+import whatscookingImage from "@/assets/whats_cooking.png";
+import skylineImage from "@/assets/skyline_v2.png";
 import { WalletButton } from "@/components/WalletButton";
 import { WalletProvider, useWallet } from "@/context/WalletContext";
 import Chat from "./Chat";
@@ -37,11 +39,11 @@ function AppContent() {
     const formattedMemes = memesData?.map((meme) => (
         <Card
             key={meme.id}
-            className="backdrop-blur-sm bg-white/5 border-zinc-800/50 shadow-xl"
+            className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 shadow-2xl text-white font-mono"
         >
             <div className="p-4 flex justify-between items-start">
                 <div className="space-y-1">
-                    <h3 className="text-lg font-semibold text-[#EC4899] [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]">
+                    <h3 className="text-lg font-semibold text-[#EC4899]">
                         {meme.ticker}
                     </h3>
                     <p className="text-sm text-zinc-400">by {meme.author}</p>
@@ -110,12 +112,10 @@ function AppContent() {
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-center">
-                            {/* Chat Section - Only show when connected */}
-                            {connected && <Chat />}
-                        </div>
+                <div className="flex-1 flex items-center justify-center w-full">
+                    <div className="w-full flex items-center justify-center">
+                        {/* Chat Section - Only show when connected */}
+                        {connected && <Chat />}
                     </div>
                 </div>
 
@@ -148,28 +148,37 @@ function AppContent() {
             </div>
 
             {/* Meme Leaderboard */}
-            <div className="w-full overflow-hidden py-4 bg-black/10">
-                <div className="container mx-auto px-4">
-                    <h2 className="text-2xl font-bold mb-4 text-[#EC4899] [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]">
-                        veris in memeris
-                    </h2>
-                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                        {memesLoading
-                            ? // Show loading skeletons
-                              Array(6)
-                                  .fill(0)
-                                  .map((_, i) => (
-                                      <Card
-                                          key={i}
-                                          className="backdrop-blur-sm bg-white/5 border-zinc-800/50 shadow-xl"
-                                      >
-                                          <div className="p-4 space-y-3">
-                                              <div className="h-4 w-3/4 bg-zinc-800/50 rounded animate-pulse" />
-                                              <div className="h-3 w-1/2 bg-zinc-800/50 rounded animate-pulse" />
-                                          </div>
-                                      </Card>
-                                  ))
-                            : formattedMemes}
+            <div
+                className="min-h-screen relative w-full flex flex-col bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: `url(${skylineImage})` }}
+            >
+                <div className="w-full h-full backdrop-blur-sm bg-black/10 py-4">
+                    <div className="container mx-auto px-4">
+                        <div className="mb-4">
+                            <img
+                                src={whatscookingImage}
+                                alt="vires in memeris"
+                                className="h-12 w-auto"
+                            />
+                        </div>
+                        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                            {memesLoading
+                                ? // Show loading skeletons
+                                  Array(6)
+                                      .fill(0)
+                                      .map((_, i) => (
+                                          <Card
+                                              key={i}
+                                              className="backdrop-blur-sm bg-white/5 border-zinc-800/50 shadow-xl"
+                                          >
+                                              <div className="p-4 space-y-3">
+                                                  <div className="h-4 w-3/4 bg-zinc-800/50 rounded animate-pulse" />
+                                                  <div className="h-3 w-1/2 bg-zinc-800/50 rounded animate-pulse" />
+                                              </div>
+                                          </Card>
+                                      ))
+                                : formattedMemes}
+                        </div>
                     </div>
                 </div>
             </div>

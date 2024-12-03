@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { useWallet } from "@/context/WalletContext";
 
 type Attachment = {
@@ -18,11 +17,16 @@ type TextResponse = {
     attachments?: Attachment[];
 };
 
+const formatPublicKey = (key: string | null): string => {
+    if (!key) return "unknown";
+    return `${key.slice(0, 4).toLowerCase()}...${key.slice(-4).toLowerCase()}`;
+};
+
 export default function Chat() {
     const { connected, publicKey } = useWallet();
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<TextResponse[]>([]);
-    const [loadingDots, setLoadingDots] = useState(".");
+    const [loadingDots, setLoadingDots] = useState("");
 
     useEffect(() => {
         if (!connected) {
@@ -51,6 +55,7 @@ export default function Chat() {
         },
         onSuccess: (data) => {
             setMessages((prev) => [...prev, ...data]);
+            setLoadingDots("");
         },
     });
 
@@ -66,11 +71,11 @@ export default function Chat() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim()) return;
+        if (!input.trim() || !publicKey) return;
 
         const userMessage: TextResponse = {
             text: input,
-            user: "user",
+            user: publicKey,
         };
         setMessages((prev) => [...prev, userMessage]);
 
@@ -79,95 +84,59 @@ export default function Chat() {
     };
 
     return (
-        <div className="w-[800px] h-[75vh] flex items-center">
-            <div className="bg-zinc-900/90 rounded-xl w-full h-full p-6 shadow-2xl border border-zinc-800">
-                <div className="h-[calc(100%-80px)] mb-4 flex flex-col justify-center space-y-4 overflow-y-auto">
-                    {messages.length === 0 ? (
-                        <p className="text-zinc-400 text-center">
+        <div className="w-[80%] h-[75vh] flex items-center">
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg w-full h-full p-6 shadow-2xl border border-zinc-800/50 text-white font-mono">
+                <div className="flex flex-col h-full">
+                    {/* System Message */}
+                    <div className="mb-4">
+                        <p>
+                            <span className="text-[#EC4899]">
+                                meme_father {">"}{" "}
+                            </span>
                             You come to me, on this day of maximum market
                             volatility, asking for alpha?
                         </p>
-                    ) : (
-                        messages.map((message, index) => {
-                            return (
-                                <div
-                                    key={index}
-                                    className={`flex ${
-                                        message.user === "user"
-                                            ? "justify-end"
-                                            : "justify-start"
-                                    }`}
-                                >
-                                    <div
-                                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                                            message.user === "user"
-                                                ? "bg-pink-500 text-white"
-                                                : "bg-zinc-800 text-white"
-                                        }`}
-                                    >
-                                        {message.text}
-                                        {message.attachments?.map(
-                                            (attachment) => {
-                                                if (
-                                                    attachment.source ===
-                                                    "imageGeneration"
-                                                ) {
-                                                    return (
-                                                        <div
-                                                            key={attachment.id}
-                                                            className="mt-2"
-                                                        >
-                                                            <img
-                                                                src={
-                                                                    attachment.url
-                                                                }
-                                                                alt={
-                                                                    attachment.description ||
-                                                                    "Generated image"
-                                                                }
-                                                                className="max-w-full rounded-lg"
-                                                                onError={(e) =>
-                                                                    console.error(
-                                                                        "=== Image Load Error ===",
-                                                                        attachment.url,
-                                                                        e
-                                                                    )
-                                                                }
-                                                            />
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            }
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                    {mutation.isPending && (
-                        <p className="text-zinc-400 text-center">
-                            {loadingDots}
-                        </p>
-                    )}
-                </div>
+                    </div>
 
-                <form onSubmit={handleSubmit} className="flex gap-2">
-                    <Input
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Tell me, my child..."
-                        className="flex-1 bg-zinc-800 border-zinc-700 text-white"
-                        disabled={mutation.isPending}
-                    />
-                    <Button
-                        type="submit"
-                        disabled={mutation.isPending}
-                        className="bg-pink-500 hover:bg-pink-600 text-white font-semibold"
-                    >
-                        {mutation.isPending ? "..." : "Send"}
-                    </Button>
-                </form>
+                    {/* Messages */}
+                    <div className="flex-1 overflow-y-auto">
+                        {messages.map((message, index) => (
+                            <div key={index} className="mb-2">
+                                <p>
+                                    <span className="text-[#EC4899]">
+                                        {message.user === publicKey
+                                            ? formatPublicKey(message.user)
+                                            : "meme_father"}{" "}
+                                        {">"}{" "}
+                                    </span>
+                                    {message.text}
+                                </p>
+                            </div>
+                        ))}
+                        {mutation.isPending && (
+                            <p>
+                                <span className="text-[#EC4899]">
+                                    meme_father {">"}{" "}
+                                </span>
+                                {loadingDots}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Input */}
+                    <form onSubmit={handleSubmit} className="flex items-center">
+                        <span className="text-[#EC4899]">
+                            {formatPublicKey(publicKey)} {">"}{" "}
+                        </span>
+                        <Input
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            placeholder="Type your message..."
+                            className="flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white"
+                            disabled={mutation.isPending}
+                        />
+                    </form>
+                </div>
             </div>
         </div>
     );
