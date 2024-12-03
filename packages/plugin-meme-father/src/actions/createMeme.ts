@@ -1,4 +1,4 @@
-import { Action, IAgentRuntime, Memory, State, composeContext, generateText, ModelClass } from '@ai16z/eliza';
+import { Action, IAgentRuntime, Memory, State, composeContext, generateText, ModelClass, elizaLogger } from '@ai16z/eliza';
 
 /**
  * Template for generating meme details in the agent's voice.
@@ -65,25 +65,56 @@ export const createMemeAction: Action = {
         });
 
         // Parse the generated meme details
-        let parsedMemeDetails: MemeDetails;
+        let parsedMemeDetails;
         try {
-            parsedMemeDetails = JSON.parse(memeDetails) as MemeDetails;
-        } catch {
+            // Remove markdown code blocks and extract just the JSON
+            const jsonString = memeDetails
+                .replace(/```json\n?/, '')  // Remove opening ```json
+                .replace(/```\n?/, '')      // Remove closing ```
+                .trim();                    // Remove any extra whitespace
+
+            parsedMemeDetails = JSON.parse(jsonString);
+        } catch (e) {
+            console.error('Failed to parse meme details:', e);
+            console.log('Raw meme details:', memeDetails);
             callback({ text: "Failed to parse meme details", error: true });
             return;
         }
 
+
+        // Create a copy of the memory object
+        const memoryWithoutEmbedding = { ...message };
+
+        // Delete the embedding field if it exists
+        delete memoryWithoutEmbedding.embedding;
+
+        elizaLogger.info('message', JSON.stringify(memoryWithoutEmbedding, null, 2));
+
+
+        const stringifyWithoutEmbeddings = (obj: any): string => {
+            return JSON.stringify(obj, (key, value) => {
+                // If this is a Memory object (checking for typical Memory properties)
+                if (value && typeof value === 'object' && 'content' in value && 'userId' in value) {
+                    // Skip Memory objects entirely
+                    return undefined;
+                }
+                return value;
+            }, 2);
+        };
+
+        elizaLogger.info('state', stringifyWithoutEmbeddings(state));
+
         const memeMemory: Memory = {
             id: crypto.randomUUID(),
             content: {
-                text: message.content.text,
+                text: `Meme Ticker: ${parsedMemeDetails.TICKER} - ${parsedMemeDetails.DESCRIPTION}`,
                 ticker: parsedMemeDetails.TICKER,
                 description: parsedMemeDetails.DESCRIPTION,
                 category: parsedMemeDetails.CATEGORY,
                 votes: 0,
                 status: 'pending'
             },
-            userId: state.userId,
+            userId: message.userId,
             roomId: runtime.agentId,
             agentId: runtime.agentId,
             createdAt: Date.now()

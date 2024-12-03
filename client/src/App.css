@@ -41,14 +41,15 @@
 }
 
 @keyframes scroll {
-  from {
+  0% {
     transform: translateX(0);
   }
-  to {
+  100% {
     transform: translateX(-50%);
   }
 }
 
 .animate-scroll {
   animation: scroll 20s linear infinite;
+  min-width: 100%;
 }
