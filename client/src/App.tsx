@@ -20,6 +20,7 @@ interface Meme {
     votes: number;
     author: string;
     timestamp: string;
+    url?: string;
 }
 
 function AppContent() {
@@ -34,6 +35,7 @@ function AppContent() {
                 `/api/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/memes`
             );
             const data = await res.json();
+            console.log("Received memes data:", data.memes);
             return data.memes as Meme[];
         },
         refetchInterval: 30000, // Refetch every 30 seconds
@@ -48,8 +50,12 @@ function AppContent() {
         >
             <div className="p-4 flex justify-between items-start">
                 <div className="space-y-1">
-                    <h3 className="text-lg font-semibold text-[#EC4899]">
-                        {meme.ticker}
+                    <h3 className="text-lg font-semibold">
+                        <span className="text-green-500">
+                            {meme.votes.toString().padStart(3, '0')}
+                        </span>
+                        <span className="text-zinc-500 mx-2">|</span>
+                        <span className="text-[#EC4899]">{meme.ticker}</span>
                     </h3>
                     <p className="text-sm text-zinc-400">by {meme.author}</p>
                     <p className="text-xs text-zinc-500">
@@ -58,9 +64,18 @@ function AppContent() {
                         UTC
                     </p>
                 </div>
-                <div className="text-xl font-bold text-green-500">
-                    {meme.votes}
-                </div>
+                {meme.url && (
+                    <div className="w-16 h-16 flex-shrink-0">
+                        <img
+                            src={meme.url}
+                            alt="Meme"
+                            className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                            }}
+                        />
+                    </div>
+                )}
             </div>
         </Card>
     ));
@@ -169,8 +184,8 @@ function AppContent() {
                                         01_interactions {">"}
                                     </h3>
                                     <p className="text-sm text-zinc-400">
-                                        web app console & twitter. the meme father
-                                        acquires knowledge and ideas from
+                                        web app console & twitter. the meme
+                                        father acquires knowledge and ideas from
                                         interactions
                                     </p>
                                 </div>
@@ -181,9 +196,9 @@ function AppContent() {
                                         02_ideation {">"}
                                     </h3>
                                     <p className="text-sm text-zinc-400">
-                                        the meme father spawns new memes into life.
-                                        They go into the melting pot as candidates
-                                        for launch
+                                        the meme father spawns new memes into
+                                        life. They go into the melting pot as
+                                        candidates for launch
                                     </p>
                                 </div>
 
@@ -194,7 +209,8 @@ function AppContent() {
                                     </h3>
                                     <p className="text-sm text-zinc-400">
                                         the meme father mulls over these ideas
-                                        daily. he ranks them based on memetic power
+                                        daily. he ranks them based on memetic
+                                        power
                                     </p>
                                 </div>
 
@@ -204,8 +220,9 @@ function AppContent() {
                                         04_launch {">"}
                                     </h3>
                                     <p className="text-sm text-zinc-400">
-                                        every seventh day, he births a new meme on
-                                        pump.fun and communicates via his channels
+                                        every seventh day, he births a new meme
+                                        on pump.fun and communicates via his
+                                        channels
                                     </p>
                                 </div>
 
@@ -216,7 +233,8 @@ function AppContent() {
                                     </h3>
                                     <p className="text-sm text-zinc-400">
                                         the slate is cleaned and the process
-                                        repeats. Only the best memes make the cut
+                                        repeats. Only the best memes make the
+                                        cut
                                     </p>
                                 </div>
                             </div>
@@ -263,9 +281,9 @@ function AppContent() {
 
             {/* Modal */}
             {selectedMeme && (
-                <MemeModal 
-                    meme={selectedMeme} 
-                    onClose={() => setSelectedMeme(null)} 
+                <MemeModal
+                    meme={selectedMeme}
+                    onClose={() => setSelectedMeme(null)}
                 />
             )}
         </main>

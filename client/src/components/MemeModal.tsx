@@ -10,6 +10,8 @@ interface MemeModalProps {
         votes: number;
         author: string;
         timestamp: string;
+        last_scored?: string;
+        url?: string;
     };
     onClose: () => void;
 }
@@ -17,13 +19,11 @@ interface MemeModalProps {
 export function MemeModal({ meme, onClose }: MemeModalProps) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
             />
 
-            {/* Modal Content */}
             <div className="relative z-50 w-full max-w-2xl mx-4">
                 <Card className="bg-black/80 backdrop-blur-sm border border-zinc-800/50 shadow-2xl text-white font-mono">
                     <div className="p-6 space-y-4">
@@ -49,24 +49,40 @@ export function MemeModal({ meme, onClose }: MemeModalProps) {
 
                         {/* Content */}
                         <div className="space-y-4">
+                            {/* Add Image */}
+                            {meme.url && (
+                                <div className="w-full">
+                                    <img
+                                        src={meme.url}
+                                        alt="busto"
+                                        className="w-full rounded-lg object-cover"
+                                    />
+                                </div>
+                            )}
+
                             <div className="bg-black/50 p-4 rounded-lg">
                                 <p className="text-zinc-200">
                                     {meme.description}
                                 </p>
                             </div>
 
-                            <div className="flex justify-between items-center text-sm">
-                                <p className="text-zinc-500">
-                                    {new Date(
-                                        parseInt(meme.timestamp)
-                                    ).toLocaleDateString()}{" "}
-                                    {new Date(
-                                        parseInt(meme.timestamp)
-                                    ).toLocaleTimeString()}{" "}
-                                    UTC
-                                </p>
+                            <div className="flex justify-between items-start">
+                                <div className="flex flex-col gap-1 text-sm">
+                                    <p className="text-zinc-500">
+                                        created: {new Date(parseInt(meme.timestamp)).toLocaleDateString()}{" "}
+                                        {new Date(parseInt(meme.timestamp)).toLocaleTimeString()}{" "}
+                                        UTC
+                                    </p>
+                                    <p className="text-zinc-500">
+                                        memetic scan: {meme.last_scored ? (
+                                            `${new Date(parseInt(meme.last_scored)).toLocaleDateString()} ${new Date(parseInt(meme.last_scored)).toLocaleTimeString()} UTC`
+                                        ) : (
+                                            <span>soon<sup>™</sup></span>
+                                        )}
+                                    </p>
+                                </div>
                                 <p className="text-xl font-bold text-green-500">
-                                    {meme.votes} mp
+                                    {meme.votes.toString().padStart(3, '0')} mp
                                 </p>
                             </div>
                         </div>

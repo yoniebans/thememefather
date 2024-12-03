@@ -407,7 +407,13 @@ export class DirectClient {
                             description: meme.content.description || "No description available",
                             votes: meme.content.votes || 0,
                             author: meme.userId || "Anonymous",
-                            timestamp: meme.createdAt?.toString() || new Date().toISOString()
+                            timestamp: meme.createdAt?.toString() || new Date().toISOString(),
+                            ...(meme.content.image_url && {
+                                url: `/api/${runtime.agentId}/images/${(meme.content.image_url as string).split('/').pop()}`
+                            }),
+                            ...(meme.content.last_scored && {
+                                last_scored: meme.content.last_scored
+                            })
                         }));
 
                     res.json({ memes: formattedMemes });
