@@ -53,3 +53,7 @@
   animation: scroll 20s linear infinite;
   min-width: 100%;
 }
+
+html, body {
+  background-color: rgba(0, 0, 0, 0.8);
+}

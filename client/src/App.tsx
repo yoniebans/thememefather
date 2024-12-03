@@ -10,6 +10,8 @@ import skylineImage from "@/assets/skyline_v2.png";
 import { WalletButton } from "@/components/WalletButton";
 import { WalletProvider, useWallet } from "@/context/WalletContext";
 import Chat from "./Chat";
+import { useState } from "react";
+import { MemeModal } from "@/components/MemeModal";
 
 interface Meme {
     id: string;
@@ -22,6 +24,7 @@ interface Meme {
 
 function AppContent() {
     const { connected } = useWallet();
+    const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
 
     // Add memes query
     const { data: memesData, isLoading: memesLoading } = useQuery({
@@ -40,7 +43,8 @@ function AppContent() {
     const formattedMemes = memesData?.map((meme) => (
         <Card
             key={meme.id}
-            className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 shadow-2xl text-white font-mono"
+            className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 shadow-2xl text-white font-mono cursor-pointer transition-all hover:scale-[1.02]"
+            onClick={() => setSelectedMeme(meme)}
         >
             <div className="p-4 flex justify-between items-start">
                 <div className="space-y-1">
@@ -49,12 +53,8 @@ function AppContent() {
                     </h3>
                     <p className="text-sm text-zinc-400">by {meme.author}</p>
                     <p className="text-xs text-zinc-500">
-                        {new Date(
-                            parseInt(meme.timestamp)
-                        ).toLocaleDateString()}{" "}
-                        {new Date(
-                            parseInt(meme.timestamp)
-                        ).toLocaleTimeString()}{" "}
+                        {new Date(parseInt(meme.timestamp)).toLocaleDateString()}{" "}
+                        {new Date(parseInt(meme.timestamp)).toLocaleTimeString()}{" "}
                         UTC
                     </p>
                 </div>
@@ -66,7 +66,7 @@ function AppContent() {
     ));
 
     return (
-        <main className="min-h-screen w-full">
+        <main className="min-h-screen w-full bg-black/80">
             {/* Hero Section */}
             <div className="min-h-screen relative w-full flex flex-col bg-[url('/src/assets/background_v2.png')] bg-cover bg-center bg-no-repeat">
                 {/* Logo and Social Links */}
@@ -260,6 +260,14 @@ function AppContent() {
                     </div>
                 </div>
             </div>
+
+            {/* Modal */}
+            {selectedMeme && (
+                <MemeModal 
+                    meme={selectedMeme} 
+                    onClose={() => setSelectedMeme(null)} 
+                />
+            )}
         </main>
     );
 }

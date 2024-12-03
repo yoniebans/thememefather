@@ -87,19 +87,20 @@ export default function Chat() {
         <div className="w-[80%] h-[75vh] flex items-center">
             <div className="bg-black/70 backdrop-blur-sm rounded-lg w-full h-full p-6 shadow-2xl border border-zinc-800/50 text-white font-mono">
                 <div className="flex flex-col h-full">
-                    {/* System Message */}
-                    <div className="mb-4">
-                        <p>
-                            <span className="text-[#EC4899]">
-                                meme_father {">"}{" "}
-                            </span>
-                            You come to me, on this day of maximum market
-                            volatility, asking for alpha?
-                        </p>
-                    </div>
-
-                    {/* Messages */}
+                    {/* Messages - now includes system message */}
                     <div className="flex-1 overflow-y-auto">
+                        {/* System Message */}
+                        <div className="mb-2">
+                            <p>
+                                <span className="text-[#EC4899]">
+                                    meme_father {">"}{" "}
+                                </span>
+                                You come to me, on this day of maximum market
+                                volatility, asking for alpha?
+                            </p>
+                        </div>
+
+                        {/* User Messages */}
                         {messages.map((message, index) => (
                             <div key={index} className="mb-2">
                                 <p>
