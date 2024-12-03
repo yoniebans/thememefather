@@ -32,6 +32,14 @@ import {
     ModelProviderName,
     ServiceType,
 } from "./types.ts";
+import { Langfuse } from "langfuse";
+import { stringToUuid } from './uuid';
+
+const langfuse = new Langfuse({
+    secretKey: "sk-lf-e4db2af8-1d67-4a13-bd2e-6946f6e11fa1",
+    publicKey: "pk-lf-3a3d1e9e-7bcf-4709-8bc0-acff2aeaf26b",
+    baseUrl: "https://cloud.langfuse.com"
+});
 
 /**
  * Send a message to the model for a text generateText - receive a string back and parse how you'd like
@@ -61,6 +69,28 @@ export async function generateText({
         console.error("generateText context is empty");
         return "";
     }
+
+    const traceId = stringToUuid(`${Date.now()}-${context.slice(0, 10)}`);
+    const trace = langfuse.trace({
+        id: traceId,
+        metadata: {
+            modelProvider: runtime.modelProvider,
+            modelClass,
+            temperature: models[runtime.modelProvider].settings.temperature
+        }
+    });
+    const generation = trace.generation({
+        name: "text_generation",
+        model: models[runtime.modelProvider].model[modelClass],
+        modelParameters: {
+            ...models[runtime.modelProvider].settings,
+            stop: stop || models[runtime.modelProvider].settings.stop
+        },
+        input: {
+            prompt: context,
+            system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined
+        }
+    });
 
     elizaLogger.log("Generating text...");
 
@@ -381,9 +411,26 @@ export async function generateText({
             }
         }
 
+        generation.end({
+            output: {
+                completion: response,
+                finish_reason: "stop"
+            },
+            usage: {
+                input: Buffer.byteLength(context, 'utf8'),
+                output: Buffer.byteLength(response, 'utf8'),
+                unit: "CHARACTERS"
+            }
+        });
         return response;
     } catch (error) {
         elizaLogger.error("Error in generateText:", error);
+        generation.end({
+            output: {
+                completion: error instanceof Error ? error.message : String(error),
+                finish_reason: "error"
+            }
+        });
         throw error;
     }
 }
