@@ -237,6 +237,26 @@ export class DirectClient {
                     }
                 );
 
+                // Transform local file paths to API URLs in the response
+                if (response.attachments) {
+                    elizaLogger.log("=== Response Attachments ===");
+                    response.attachments = response.attachments.map(attachment => ({
+                        ...attachment,
+                        url: `/api/${runtime.agentId}/images/${attachment.url.split('/').pop()}`
+                    }));
+                    elizaLogger.log(JSON.stringify(response.attachments, null, 2));
+                }
+
+                // Also transform attachments in the message if it exists
+                if (message?.attachments) {
+                    elizaLogger.log("=== Message Attachments ===");
+                    message.attachments = message.attachments.map(attachment => ({
+                        ...attachment,
+                        url: `/api/${runtime.agentId}/images/${attachment.url.split('/').pop()}`
+                    }));
+                    elizaLogger.log(JSON.stringify(message.attachments, null, 2));
+                }
+
                 if (message) {
                     res.json([message, response]);
                 } else {
@@ -290,7 +310,7 @@ export class DirectClient {
                     res.json(data);
                 } catch (error) {
                     res.status(500).json({
-                        error: 'Failed to forward request to BagelDB',
+                        error: 'Please create an account at bakery.bagel.net and get an API key. Then set the BAGEL_API_KEY environment variable.',
                         details: error.message
                     });
                 }
@@ -398,6 +418,21 @@ export class DirectClient {
                         details: error.message
                     });
                 }
+            }
+        );
+
+        // Add an endpoint to serve the images
+        this.app.get(
+            "/:agentId/images/:filename",
+            (req: express.Request, res: express.Response) => {
+                const filename = req.params.filename;
+                const imagePath = path.join(process.cwd(), "generatedImages", filename);
+                res.sendFile(imagePath, (err) => {
+                    if (err) {
+                        console.error("Error sending file:", err);
+                        res.status(404).send("Image not found");
+                    }
+                });
             }
         );
     }

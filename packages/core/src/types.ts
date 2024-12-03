@@ -199,6 +199,7 @@ export type Models = {
     [ModelProviderName.OPENROUTER]: Model;
     [ModelProviderName.OLLAMA]: Model;
     [ModelProviderName.HEURIST]: Model;
+    [ModelProviderName.FAL]: Model;
 };
 
 /**
@@ -218,6 +219,7 @@ export enum ModelProviderName {
     OPENROUTER = "openrouter",
     OLLAMA = "ollama",
     HEURIST = "heurist",
+    FAL = "falai"
 }
 
 /**
@@ -610,6 +612,9 @@ export type Character = {
     /** Model provider to use */
     modelProvider: ModelProviderName;
 
+    /** Image model provider to use, if different from modelProvider */
+    imageModelProvider?: ModelProviderName;
+
     /** Optional model endpoint override */
     modelEndpointOverride?: string;
 
@@ -959,6 +964,7 @@ export interface IAgentRuntime {
     databaseAdapter: IDatabaseAdapter;
     token: string | null;
     modelProvider: ModelProviderName;
+    imageModelProvider: ModelProviderName;
     character: Character;
     providers: Provider[];
     actions: Action[];

@@ -82,27 +82,27 @@ export const createMemeAction: Action = {
         }
 
 
-        // Create a copy of the memory object
-        const memoryWithoutEmbedding = { ...message };
+        // // Create a copy of the memory object
+        // const memoryWithoutEmbedding = { ...message };
 
-        // Delete the embedding field if it exists
-        delete memoryWithoutEmbedding.embedding;
+        // // Delete the embedding field if it exists
+        // delete memoryWithoutEmbedding.embedding;
 
-        elizaLogger.info('message', JSON.stringify(memoryWithoutEmbedding, null, 2));
+        // elizaLogger.info('message', JSON.stringify(memoryWithoutEmbedding, null, 2));
 
 
-        const stringifyWithoutEmbeddings = (obj: any): string => {
-            return JSON.stringify(obj, (key, value) => {
-                // If this is a Memory object (checking for typical Memory properties)
-                if (value && typeof value === 'object' && 'content' in value && 'userId' in value) {
-                    // Skip Memory objects entirely
-                    return undefined;
-                }
-                return value;
-            }, 2);
-        };
+        // const stringifyWithoutEmbeddings = (obj: any): string => {
+        //     return JSON.stringify(obj, (key, value) => {
+        //         // If this is a Memory object (checking for typical Memory properties)
+        //         if (value && typeof value === 'object' && 'content' in value && 'userId' in value) {
+        //             // Skip Memory objects entirely
+        //             return undefined;
+        //         }
+        //         return value;
+        //     }, 2);
+        // };
 
-        elizaLogger.info('state', stringifyWithoutEmbeddings(state));
+        // elizaLogger.info('state', stringifyWithoutEmbeddings(state));
 
         const memeMemory: Memory = {
             id: crypto.randomUUID(),

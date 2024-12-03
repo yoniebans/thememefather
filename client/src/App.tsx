@@ -1,21 +1,12 @@
 import "./App.css";
-// import Agents from "./Agents";
-
-import { useState, useEffect } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Github, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import eldonImage from "@/assets/eldon.png";
+import fontboltImage from "@/assets/fontbolt.png";
 import { WalletButton } from "@/components/WalletButton";
 import { WalletProvider, useWallet } from "@/context/WalletContext";
-import fontboltImage from "@/assets/fontbolt.png";
-
-type TextResponse = {
-    text: string;
-    user: string;
-};
+import Chat from "./Chat";
 
 interface Meme {
     id: string;
@@ -27,69 +18,7 @@ interface Meme {
 }
 
 function AppContent() {
-    const { connected, publicKey } = useWallet();
-    const [input, setInput] = useState("");
-    const [messages, setMessages] = useState<TextResponse[]>([]);
-    const [loadingDots, setLoadingDots] = useState(".");
-
-    useEffect(() => {
-        if (!connected) {
-            setMessages([]);
-        }
-    }, [connected, publicKey]);
-
-    const mutation = useMutation({
-        mutationFn: async (text: string) => {
-            console.log("Sending message to server for user:", publicKey);
-            const res = await fetch(
-                `/api/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/message`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        text,
-                        userId: publicKey,
-                        roomId: "meme-generation-frontend",
-                    }),
-                }
-            );
-            return res.json() as Promise<TextResponse[]>;
-        },
-        onSuccess: (data) => {
-            console.log(data);
-            const newMessage = data[data.length - 1];
-            setMessages((prev) => [...prev, newMessage].slice(-4));
-        },
-    });
-
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-
-        if (mutation.isPending) {
-            interval = setInterval(() => {
-                setLoadingDots((prev) => (prev === "..." ? "." : prev + "."));
-            }, 500);
-        }
-
-        return () => clearInterval(interval);
-    }, [mutation.isPending]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!input.trim()) return;
-
-        // Add user message
-        const userMessage: TextResponse = {
-            text: input,
-            user: "user",
-        };
-        setMessages((prev) => [...prev, userMessage].slice(-4));
-
-        mutation.mutate(input);
-        setInput("");
-    };
+    const { connected } = useWallet();
 
     // Add memes query
     const { data: memesData, isLoading: memesLoading } = useQuery({
@@ -99,7 +28,6 @@ function AppContent() {
                 `/api/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/memes`
             );
             const data = await res.json();
-            console.log(data);
             return data.memes as Meme[];
         },
         refetchInterval: 30000, // Refetch every 30 seconds
@@ -107,7 +35,10 @@ function AppContent() {
 
     // Format memes for frontend
     const formattedMemes = memesData?.map((meme) => (
-        <Card key={meme.id} className="backdrop-blur-sm bg-white/5 border-zinc-800/50 shadow-xl">
+        <Card
+            key={meme.id}
+            className="backdrop-blur-sm bg-white/5 border-zinc-800/50 shadow-xl"
+        >
             <div className="p-4 flex justify-between items-start">
                 <div className="space-y-1">
                     <h3 className="text-lg font-semibold text-[#EC4899] [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]">
@@ -115,7 +46,13 @@ function AppContent() {
                     </h3>
                     <p className="text-sm text-zinc-400">by {meme.author}</p>
                     <p className="text-xs text-zinc-500">
-                        {new Date(parseInt(meme.timestamp)).toLocaleDateString()} {new Date(parseInt(meme.timestamp)).toLocaleTimeString()} UTC
+                        {new Date(
+                            parseInt(meme.timestamp)
+                        ).toLocaleDateString()}{" "}
+                        {new Date(
+                            parseInt(meme.timestamp)
+                        ).toLocaleTimeString()}{" "}
+                        UTC
                     </p>
                 </div>
                 <div className="text-xl font-bold text-green-500">
@@ -128,7 +65,7 @@ function AppContent() {
     return (
         <main className="min-h-screen w-full">
             {/* Hero Section */}
-            <div className="min-h-screen relative w-full flex flex-col bg-[url('/src/assets/background.png')] bg-cover bg-center bg-no-repeat">
+            <div className="min-h-screen relative w-full flex flex-col bg-[url('/src/assets/background_v2.png')] bg-cover bg-center bg-no-repeat">
                 {/* Logo and Social Links */}
                 <div className="absolute top-4 w-full px-4 flex justify-between items-center">
                     {/* Logo */}
@@ -173,80 +110,11 @@ function AppContent() {
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 flex items-end justify-start">
+                <div className="flex-1 flex items-center justify-center">
                     <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-start gap-20">
-                            {/* Image */}
-                            <div className="w-[800px] h-[800px] flex-shrink-0 -ml-10">
-                                <img
-                                    src={eldonImage}
-                                    alt="El Don"
-                                    className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.2)]"
-                                    style={{
-                                        imageRendering: "crisp-edges",
-                                        WebkitBackdropFilter: "none",
-                                        backdropFilter: "none",
-                                    }}
-                                />
-                            </div>
-
+                        <div className="flex items-center justify-center">
                             {/* Chat Section - Only show when connected */}
-                            {connected && (
-                                <div className="w-[800px] h-[75vh] flex items-center">
-                                    <div className="bg-zinc-900/90 rounded-xl w-full h-full p-6 shadow-2xl border border-zinc-800">
-                                        <div className="h-[calc(100%-80px)] mb-4 flex flex-col justify-center space-y-4 overflow-y-auto">
-                                            {messages.length === 0 ? (
-                                                <p className="text-zinc-400 text-center">
-                                                    You come to me, on this day of maximum market volatility, asking for alpha?
-                                                </p>
-                                            ) : (
-                                                messages.map((message, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className={`flex ${
-                                                            message.user === "user"
-                                                                ? "justify-end"
-                                                                : "justify-start"
-                                                        }`}
-                                                    >
-                                                        <div
-                                                            className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                                                                message.user === "user"
-                                                                    ? "bg-pink-500 text-white"
-                                                                    : "bg-zinc-800 text-white"
-                                                            }`}
-                                                        >
-                                                            {message.text}
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )}
-                                            {mutation.isPending && (
-                                                <p className="text-zinc-400 text-center">
-                                                    {loadingDots}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        <form onSubmit={handleSubmit} className="flex gap-2">
-                                            <Input
-                                                value={input}
-                                                onChange={(e) => setInput(e.target.value)}
-                                                placeholder="Tell me, my child..."
-                                                className="flex-1 bg-zinc-800 border-zinc-700 text-white"
-                                                disabled={mutation.isPending}
-                                            />
-                                            <Button
-                                                type="submit"
-                                                disabled={mutation.isPending}
-                                                className="bg-pink-500 hover:bg-pink-600 text-white font-semibold"
-                                            >
-                                                Send
-                                            </Button>
-                                        </form>
-                                    </div>
-                                </div>
-                            )}
+                            {connected && <Chat />}
                         </div>
                     </div>
                 </div>

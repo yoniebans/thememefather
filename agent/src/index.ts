@@ -28,8 +28,10 @@ import { bootstrapPlugin } from "@ai16z/plugin-bootstrap";
 import {
     coinbaseCommercePlugin,
     coinbaseMassPaymentsPlugin,
+    tradePlugin,
 } from "@ai16z/plugin-coinbase";
 import { confluxPlugin } from "@ai16z/plugin-conflux";
+import { imageGenerationPlugin } from "@ai16z/plugin-image-generation";
 import { evmPlugin } from "@ai16z/plugin-evm";
 import { createNodePlugin } from "@ai16z/plugin-node";
 import { solanaPlugin } from "@ai16z/plugin-solana";
@@ -86,7 +88,9 @@ function tryLoadFile(filePath: string): string | null {
 export async function loadCharacters(
     charactersArg: string
 ): Promise<Character[]> {
-    let characterPaths = charactersArg?.split(",").map((filePath) => filePath.trim());
+    let characterPaths = charactersArg
+        ?.split(",")
+        .map((filePath) => filePath.trim());
     const loadedCharacters = [];
 
     if (characterPaths?.length > 0) {
@@ -94,13 +98,22 @@ export async function loadCharacters(
             let content = null;
             let resolvedPath = "";
 
+
             // Try different path resolutions in order
             const pathsToTry = [
                 characterPath, // exact path as specified
                 path.resolve(process.cwd(), characterPath), // relative to cwd
                 path.resolve(__dirname, characterPath), // relative to current script
-                path.resolve(__dirname, "../characters", path.basename(characterPath)), // relative to characters dir from agent
-                path.resolve(__dirname, "../../characters", path.basename(characterPath)), // relative to project root characters dir
+                path.resolve(
+                    __dirname,
+                    "../characters",
+                    path.basename(characterPath)
+                ), // relative to characters dir from agent
+                path.resolve(
+                    __dirname,
+                    "../../characters",
+                    path.basename(characterPath)
+                ), // relative to project root characters dir
             ];
 
             for (const tryPath of pathsToTry) {
@@ -112,9 +125,11 @@ export async function loadCharacters(
             }
 
             if (content === null) {
-                elizaLogger.error(`Error loading character from ${characterPath}: File not found in any of the expected locations`);
+                elizaLogger.error(
+                    `Error loading character from ${characterPath}: File not found in any of the expected locations`
+                );
                 elizaLogger.error("Tried the following paths:");
-                pathsToTry.forEach(p => elizaLogger.error(` - ${p}`));
+                pathsToTry.forEach((p) => elizaLogger.error(` - ${p}`));
                 process.exit(1);
             }
 
@@ -135,9 +150,13 @@ export async function loadCharacters(
                 }
 
                 loadedCharacters.push(character);
-                elizaLogger.info(`Successfully loaded character from: ${resolvedPath}`);
+                elizaLogger.info(
+                    `Successfully loaded character from: ${resolvedPath}`
+                );
             } catch (e) {
-                elizaLogger.error(`Error parsing character from ${resolvedPath}: ${e}`);
+                elizaLogger.error(
+                    `Error parsing character from ${resolvedPath}: ${e}`
+                );
                 process.exit(1);
             }
         }
@@ -208,6 +227,11 @@ export function getTokenForProvider(
             return (
                 character.settings?.secrets?.GROQ_API_KEY ||
                 settings.GROQ_API_KEY
+            );
+        case ModelProviderName.FAL:
+            return (
+                character.settings?.secrets?.FAL_API_KEY ||
+                settings.FAL_API_KEY
             );
     }
 }
@@ -286,7 +310,7 @@ export function createAgent(
         character.name
     );
 
-    nodePlugin ??= createNodePlugin()
+    nodePlugin ??= createNodePlugin();
 
     return new AgentRuntime({
         databaseAdapter: db,
@@ -301,26 +325,31 @@ export function createAgent(
                 : null,
             nodePlugin,
             getSecret(character, "SOLANA_PUBLIC_KEY") ||
-                getSecret(character, "WALLET_PUBLIC_KEY") &&
-                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x")
+            (getSecret(character, "WALLET_PUBLIC_KEY") &&
+                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
                 ? solanaPlugin
                 : null,
             getSecret(character, "EVM_PUBLIC_KEY") ||
-                getSecret(character, "WALLET_PUBLIC_KEY") &&
-                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x")
+            (getSecret(character, "WALLET_PUBLIC_KEY") &&
+                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
                 ? evmPlugin
                 : null,
             getSecret(character, "ZEROG_PRIVATE_KEY") ? zgPlugin : null,
             getSecret(character, "COINBASE_COMMERCE_KEY")
                 ? coinbaseCommercePlugin
                 : null,
-            getSecret(character, "COINBASE_API_KEY") &&
-                getSecret(character, "COINBASE_PRIVATE_KEY")
-                ? coinbaseMassPaymentsPlugin
-                : null,
             getSecret(character, "BUTTPLUG_API_KEY") ? buttplugPlugin : null,
             getSecret(character, "WALLET_SECRET_SALT") ? teePlugin : null,
             memeFatherPlugin,
+            getSecret(character, "FAL_API_KEY") ||
+                getSecret(character, "OPENAI_API_KEY") ||
+                getSecret(character, "HEURIST_API_KEY")
+                ? imageGenerationPlugin
+                : null,
+            ...(getSecret(character, "COINBASE_API_KEY") &&
+            getSecret(character, "COINBASE_PRIVATE_KEY")
+                ? [coinbaseMassPaymentsPlugin, tradePlugin]
+                : []),
         ].filter(Boolean),
         providers: [],
         actions: [],
