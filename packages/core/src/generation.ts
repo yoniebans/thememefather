@@ -38,8 +38,8 @@ import { Langfuse } from "langfuse";
 import { stringToUuid } from "./uuid";
 
 const langfuse = new Langfuse({
-    secretKey: "sk-lf-e4db2af8-1d67-4a13-bd2e-6946f6e11fa1",
-    publicKey: "pk-lf-3a3d1e9e-7bcf-4709-8bc0-acff2aeaf26b",
+    secretKey: "",
+    publicKey: "",
     baseUrl: "https://cloud.langfuse.com",
 });
 
