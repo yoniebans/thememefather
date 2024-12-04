@@ -105,7 +105,7 @@ Integrates Buttplug.io for intimate toy control:
 1. Install the desired plugin package:
 
 ```bash
-pnpm add @eliza/plugin-[name]
+pnpm add @ai16z/plugin-[name]
 ```
 
 2. Import and register the plugin in your character configuration:
@@ -119,8 +119,6 @@ const character = {
   plugins: [bootstrapPlugin, imageGenerationPlugin, buttplugPlugin],
 };
 ```
-
-Here is the updated README with the Coinbase Commerce plugin information added:
 
 ---
 
@@ -210,6 +208,21 @@ Integrates Solana blockchain functionality:
 - `walletProvider` - Wallet management
 - `trustScoreProvider` - Transaction trust metrics
 
+### Charity Contributions
+
+All Coinbase trades and transfers automatically donate 1% of the transaction amount to charity. Currently, the charity addresses are hardcoded based on the network used for the transaction, with the current charity being supported as X.
+
+The charity addresses for each network are as follows:
+
+- **Base**: `0x1234567890123456789012345678901234567890`
+- **Solana**: `pWvDXKu6CpbKKvKQkZvDA66hgsTB6X2AgFxksYogHLV`
+- **Ethereum**: `0x750EF1D7a0b4Ab1c97B7A623D7917CcEb5ea779C`
+- **Arbitrum**: `0x1234567890123456789012345678901234567890`
+- **Polygon**: `0x1234567890123456789012345678901234567890`
+
+In the future, we aim to integrate with The Giving Block API to allow for dynamic and configurable donations, enabling support for a wider range of charitable organizations.
+
+
 #### 5. Coinbase Commerce Plugin (`@eliza/plugin-coinbase`)
 
 Integrates Coinbase Commerce for payment and transaction management:
@@ -222,6 +235,44 @@ Integrates Coinbase Commerce for payment and transaction management:
 
 **Description:**
 This plugin enables Eliza to interact with the Coinbase Commerce API to create and manage payment charges, providing seamless integration with cryptocurrency-based payment systems.
+
+---
+
+### Coinbase Wallet Management
+
+The plugin automatically handles wallet creation or uses an existing wallet if the required details are provided during the first run.
+
+1. **Wallet Generation on First Run**
+   If no wallet information is provided (`COINBASE_GENERATED_WALLET_HEX_SEED` and `COINBASE_GENERATED_WALLET_ID`), the plugin will:
+
+   - **Generate a new wallet** using the Coinbase SDK.
+   - Automatically **export the wallet details** (`seed` and `walletId`) and securely store them in `runtime.character.settings.secrets` or other configured storage.
+   - Log the wallet’s default address for reference.
+   - If the character file does not exist, the wallet details are saved to a characters/charactername-seed.txt file in the characters directory with a note indicating that the user must manually add these details to settings.secrets or the .env file.
+
+2. **Using an Existing Wallet**
+   If wallet information is available during the first run:
+   - Provide `COINBASE_GENERATED_WALLET_HEX_SEED` and `COINBASE_GENERATED_WALLET_ID` via `runtime.character.settings.secrets` or environment variables.
+   - The plugin will **import the wallet** and use it for processing mass payouts.
+
+---
+
+### Coinbase Wallet Management
+
+The plugin automatically handles wallet creation or uses an existing wallet if the required details are provided during the first run.
+
+1. **Wallet Generation on First Run**
+   If no wallet information is provided (`COINBASE_GENERATED_WALLET_HEX_SEED` and `COINBASE_GENERATED_WALLET_ID`), the plugin will:
+
+   - **Generate a new wallet** using the Coinbase SDK.
+   - Automatically **export the wallet details** (`seed` and `walletId`) and securely store them in `runtime.character.settings.secrets` or other configured storage.
+   - Log the wallet’s default address for reference.
+   - If the character file does not exist, the wallet details are saved to a characters/charactername-seed.txt file in the characters directory with a note indicating that the user must manually add these details to settings.secrets or the .env file.
+
+2. **Using an Existing Wallet**
+   If wallet information is available during the first run:
+   - Provide `COINBASE_GENERATED_WALLET_HEX_SEED` and `COINBASE_GENERATED_WALLET_ID` via `runtime.character.settings.secrets` or environment variables.
+   - The plugin will **import the wallet** and use it for processing mass payouts.
 
 ---
 
@@ -311,7 +362,6 @@ The plugin automatically handles wallet creation or uses an existing wallet if t
    - Provide `COINBASE_GENERATED_WALLET_HEX_SEED` and `COINBASE_GENERATED_WALLET_ID` via `runtime.character.settings.secrets` or environment variables.
    - The plugin will **import the wallet** and use it for processing mass payouts.
 
-
 **Required Configurations:**
 
 The following configurations must be provided for wallet management:
@@ -321,8 +371,9 @@ The following configurations must be provided for wallet management:
   - `COINBASE_GENERATED_WALLET_ID`: Unique wallet ID.
   - These variables must be securely stored in `runtime.character.settings.secrets` or as environment variables.
 
+---
 
-**Wallet Creation Process:**
+### Wallet Creation Process
 
 1. **Automatic Wallet Creation**
    When no wallet details are available:
@@ -449,37 +500,37 @@ const provider = new DeriveKeyProvider();
 
 // Derive a raw key
 try {
-    const rawKey = await provider.rawDeriveKey(
-        "/path/to/derive",
-        "subject-identifier"
-    );
-    // rawKey is a DeriveKeyResponse that can be used for further processing
-    // to get the uint8Array do the following
-    const rawKeyArray = rawKey.asUint8Array()
+  const rawKey = await provider.rawDeriveKey(
+    "/path/to/derive",
+    "subject-identifier",
+  );
+  // rawKey is a DeriveKeyResponse that can be used for further processing
+  // to get the uint8Array do the following
+  const rawKeyArray = rawKey.asUint8Array();
 } catch (error) {
-    console.error("Raw key derivation failed:", error);
+  console.error("Raw key derivation failed:", error);
 }
 
 // Derive a Solana keypair (Ed25519)
 try {
-    const solanaKeypair = await provider.deriveEd25519Keypair(
-        "/path/to/derive",
-        "subject-identifier"
-    );
-    // solanaKeypair can now be used for Solana operations
+  const solanaKeypair = await provider.deriveEd25519Keypair(
+    "/path/to/derive",
+    "subject-identifier",
+  );
+  // solanaKeypair can now be used for Solana operations
 } catch (error) {
-    console.error("Solana key derivation failed:", error);
+  console.error("Solana key derivation failed:", error);
 }
 
 // Derive an Ethereum keypair (ECDSA)
 try {
-    const evmKeypair = await provider.deriveEcdsaKeypair(
-        "/path/to/derive",
-        "subject-identifier"
-    );
-    // evmKeypair can now be used for Ethereum operations
+  const evmKeypair = await provider.deriveEcdsaKeypair(
+    "/path/to/derive",
+    "subject-identifier",
+  );
+  // evmKeypair can now be used for Ethereum operations
 } catch (error) {
-    console.error("EVM key derivation failed:", error);
+  console.error("EVM key derivation failed:", error);
 }
 ```
 
@@ -491,14 +542,22 @@ import { RemoteAttestationProvider } from "@ai16z/plugin-tee";
 const provider = new RemoteAttestationProvider();
 // Generate Remote Attestation
 try {
-    const attestation = await provider.generateAttestation("your-report-data");
-    console.log("Attestation:", attestation);
+  const attestation = await provider.generateAttestation("your-report-data");
+  console.log("Attestation:", attestation);
 } catch (error) {
-    console.error("Failed to generate attestation:", error);
+  console.error("Failed to generate attestation:", error);
 }
 ```
 
 **Configuration**
+
+To get a TEE simulator for local testing, use the following commands:
+
+```bash
+docker pull phalanetwork/tappd-simulator:latest
+# by default the simulator is available in localhost:8090
+docker run --rm -p 8090:8090 phalanetwork/tappd-simulator:latest
+```
 
 When using the provider through the runtime environment, ensure the following settings are configured:
 
@@ -508,7 +567,7 @@ DSTACK_SIMULATOR_ENDPOINT="http://host.docker.internal:8090"
 WALLET_SECRET_SALT=your-secret-salt // Required to single agent deployments
 ```
 
-___
+---
 
 ### Writing Custom Plugins
 

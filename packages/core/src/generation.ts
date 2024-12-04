@@ -11,7 +11,7 @@ import {
 import { Buffer } from "buffer";
 import { createOllama } from "ollama-ai-provider";
 import OpenAI from "openai";
-import { encoding_for_model, TiktokenModel } from "tiktoken";
+import { encodingForModel, TiktokenModel } from "js-tiktoken";
 import Together from "together-ai";
 import { ZodSchema } from "zod";
 import { elizaLogger } from "./index.ts";
@@ -31,15 +31,29 @@ import {
     ModelClass,
     ModelProviderName,
     ServiceType,
+    SearchResponse,
 } from "./types.ts";
+import { fal } from "@fal-ai/client";
 import { Langfuse } from "langfuse";
-import { stringToUuid } from './uuid';
+import { stringToUuid } from "./uuid";
 
 const langfuse = new Langfuse({
     secretKey: "sk-lf-e4db2af8-1d67-4a13-bd2e-6946f6e11fa1",
     publicKey: "pk-lf-3a3d1e9e-7bcf-4709-8bc0-acff2aeaf26b",
-    baseUrl: "https://cloud.langfuse.com"
+    baseUrl: "https://cloud.langfuse.com",
 });
+
+// Helper function to create consistent traces
+function createLangfuseTrace(context: string, name: string) {
+    return langfuse.trace({
+        id: stringToUuid(`${Date.now()}-${context.slice(0, 10)}`),
+        name,
+        metadata: {
+            timestamp: new Date().toISOString(),
+            contextLength: context.length,
+        },
+    });
+}
 
 /**
  * Send a message to the model for a text generateText - receive a string back and parse how you'd like
@@ -59,37 +73,41 @@ export async function generateText({
     context,
     modelClass,
     stop,
+    parent,
 }: {
     runtime: IAgentRuntime;
     context: string;
     modelClass: string;
     stop?: string[];
+    parent?: import("langfuse").LangfuseSpanClient;
 }): Promise<string> {
     if (!context) {
         console.error("generateText context is empty");
         return "";
     }
 
-    const traceId = stringToUuid(`${Date.now()}-${context.slice(0, 10)}`);
-    const trace = langfuse.trace({
-        id: traceId,
-        metadata: {
-            modelProvider: runtime.modelProvider,
-            modelClass,
-            temperature: models[runtime.modelProvider].settings.temperature
-        }
-    });
-    const generation = trace.generation({
+    // Create trace if no parent provided
+    const trace = !parent
+        ? createLangfuseTrace(context, "text-generation")
+        : null;
+
+    // Create generation with consistent metadata
+    const generation = (parent || trace)?.generation({
         name: "text_generation",
         model: models[runtime.modelProvider].model[modelClass],
         modelParameters: {
             ...models[runtime.modelProvider].settings,
-            stop: stop || models[runtime.modelProvider].settings.stop
+            stop: stop || models[runtime.modelProvider].settings.stop,
+            provider: runtime.modelProvider,
+            modelClass,
+            endpoint: models[runtime.modelProvider].endpoint,
         },
-        input: {
-            prompt: context,
-            system: runtime.character.system ?? settings.SYSTEM_PROMPT ?? undefined
-        }
+        input: context,
+        metadata: {
+            prompt: context, // Store prompt in metadata for easier access
+            maxTokens: models[runtime.modelProvider].settings.maxInputTokens,
+            temperature: models[runtime.modelProvider].settings.temperature,
+        },
     });
 
     elizaLogger.log("Generating text...");
@@ -106,17 +124,25 @@ export async function generateText({
 
     // if runtime.getSetting("LLAMACLOUD_MODEL_LARGE") is true and modelProvider is LLAMACLOUD, then use the large model
     if (
-        runtime.getSetting("LLAMACLOUD_MODEL_LARGE") &&
-        provider === ModelProviderName.LLAMACLOUD
+        (runtime.getSetting("LLAMACLOUD_MODEL_LARGE") &&
+            provider === ModelProviderName.LLAMACLOUD) ||
+        (runtime.getSetting("TOGETHER_MODEL_LARGE") &&
+            provider === ModelProviderName.TOGETHER)
     ) {
-        model = runtime.getSetting("LLAMACLOUD_MODEL_LARGE");
+        model =
+            runtime.getSetting("LLAMACLOUD_MODEL_LARGE") ||
+            runtime.getSetting("TOGETHER_MODEL_LARGE");
     }
 
     if (
-        runtime.getSetting("LLAMACLOUD_MODEL_SMALL") &&
-        provider === ModelProviderName.LLAMACLOUD
+        (runtime.getSetting("LLAMACLOUD_MODEL_SMALL") &&
+            provider === ModelProviderName.LLAMACLOUD) ||
+        (runtime.getSetting("TOGETHER_MODEL_SMALL") &&
+            provider === ModelProviderName.TOGETHER)
     ) {
-        model = runtime.getSetting("LLAMACLOUD_MODEL_SMALL");
+        model =
+            runtime.getSetting("LLAMACLOUD_MODEL_SMALL") ||
+            runtime.getSetting("TOGETHER_MODEL_SMALL");
     }
 
     elizaLogger.info("Selected model:", model);
@@ -146,7 +172,10 @@ export async function generateText({
             // OPENAI & LLAMACLOUD shared same structure.
             case ModelProviderName.OPENAI:
             case ModelProviderName.ETERNALAI:
-            case ModelProviderName.LLAMACLOUD: {
+            case ModelProviderName.ALI_BAILIAN:
+            case ModelProviderName.VOLENGINE:
+            case ModelProviderName.LLAMACLOUD:
+            case ModelProviderName.TOGETHER: {
                 elizaLogger.debug("Initializing OpenAI model.");
                 const openai = createOpenAI({ apiKey, baseURL: endpoint });
 
@@ -262,7 +291,6 @@ export async function generateText({
             }
 
             case ModelProviderName.GROQ: {
-                console.log("Initializing Groq model.");
                 const groq = createGroq({ apiKey });
 
                 const { text: groqResponse } = await aiGenerateText({
@@ -279,7 +307,6 @@ export async function generateText({
                 });
 
                 response = groqResponse;
-                console.log("Received response from Groq model.");
                 break;
             }
 
@@ -403,6 +430,52 @@ export async function generateText({
                 elizaLogger.debug("Received response from Heurist model.");
                 break;
             }
+            case ModelProviderName.GAIANET: {
+                elizaLogger.debug("Initializing GAIANET model.");
+                const openai = createOpenAI({ apiKey, baseURL: endpoint });
+
+                const { text: openaiResponse } = await aiGenerateText({
+                    model: openai.languageModel(model),
+                    prompt: context,
+                    system:
+                        runtime.character.system ??
+                        settings.SYSTEM_PROMPT ??
+                        undefined,
+                    temperature: temperature,
+                    maxTokens: max_response_length,
+                    frequencyPenalty: frequency_penalty,
+                    presencePenalty: presence_penalty,
+                });
+
+                response = openaiResponse;
+                elizaLogger.debug("Received response from GAIANET model.");
+                break;
+            }
+
+            case ModelProviderName.GALADRIEL: {
+                elizaLogger.debug("Initializing Galadriel model.");
+                const galadriel = createOpenAI({
+                    apiKey: apiKey,
+                    baseURL: endpoint,
+                });
+
+                const { text: galadrielResponse } = await aiGenerateText({
+                    model: galadriel.languageModel(model),
+                    prompt: context,
+                    system:
+                        runtime.character.system ??
+                        settings.SYSTEM_PROMPT ??
+                        undefined,
+                    temperature: temperature,
+                    maxTokens: max_response_length,
+                    frequencyPenalty: frequency_penalty,
+                    presencePenalty: presence_penalty,
+                });
+
+                response = galadrielResponse;
+                elizaLogger.debug("Received response from Galadriel model.");
+                break;
+            }
 
             default: {
                 const errorMessage = `Unsupported provider: ${provider}`;
@@ -411,25 +484,36 @@ export async function generateText({
             }
         }
 
-        generation.end({
-            output: {
-                completion: response,
-                finish_reason: "stop"
-            },
+        // Track completion with rich metadata
+        generation?.end({
+            output: response,
             usage: {
-                input: Buffer.byteLength(context, 'utf8'),
-                output: Buffer.byteLength(response, 'utf8'),
-                unit: "CHARACTERS"
-            }
+                promptTokens: Buffer.byteLength(context, "utf8"),
+                completionTokens: Buffer.byteLength(response, "utf8"),
+                totalTokens:
+                    Buffer.byteLength(context, "utf8") +
+                    Buffer.byteLength(response, "utf8"),
+                unit: "TOKENS",
+            },
+            metadata: {
+                completionTime: Date.now(),
+                provider: runtime.modelProvider,
+                success: true,
+            },
         });
         return response;
     } catch (error) {
         elizaLogger.error("Error in generateText:", error);
-        generation.end({
-            output: {
-                completion: error instanceof Error ? error.message : String(error),
-                finish_reason: "error"
-            }
+        generation?.end({
+            output: error instanceof Error ? error.message : String(error),
+            level: "ERROR",
+            statusMessage: error instanceof Error ? error.stack : String(error),
+            metadata: {
+                completionTime: Date.now(),
+                provider: runtime.modelProvider,
+                success: false,
+                errorType: error.constructor.name,
+            },
         });
         throw error;
     }
@@ -451,7 +535,7 @@ export function trimTokens(
     if (maxTokens <= 0) throw new Error("maxTokens must be positive");
 
     // Get the tokenizer for the model
-    const encoding = encoding_for_model(model);
+    const encoding = encodingForModel(model);
 
     try {
         // Encode the text into tokens
@@ -465,16 +549,12 @@ export function trimTokens(
         // Keep the most recent tokens by slicing from the end
         const truncatedTokens = tokens.slice(-maxTokens);
 
-        // Decode back to text and convert to string
-        const decodedText = encoding.decode(truncatedTokens);
-        return new TextDecoder().decode(decodedText);
+        // Decode back to text - js-tiktoken decode() returns a string directly
+        return encoding.decode(truncatedTokens);
     } catch (error) {
         console.error("Error in trimTokens:", error);
         // Return truncated string if tokenization fails
         return context.slice(-maxTokens * 4); // Rough estimate of 4 chars per token
-    } finally {
-        // Clean up tokenizer resources
-        encoding.free();
     }
 }
 
@@ -577,7 +657,7 @@ export async function splitChunks(
  */
 export async function generateTrueOrFalse({
     runtime,
-    context = "",
+    context,
     modelClass,
 }: {
     runtime: IAgentRuntime;
@@ -585,14 +665,25 @@ export async function generateTrueOrFalse({
     modelClass: string;
 }): Promise<boolean> {
     let retryDelay = 1000;
-    console.log("modelClass", modelClass);
-
     const stop = Array.from(
         new Set([
             ...(models[runtime.modelProvider].settings.stop || []),
             ["\n"],
         ])
     ) as string[];
+
+    // Create parent trace for the full operation
+    const trace = createLangfuseTrace(context, "true-false-evaluation");
+
+    // Create span for the evaluation process including retries
+    const span = trace.span({
+        name: "evaluate-boolean",
+        metadata: {
+            operationType: "boolean-parsing",
+            context,
+            initialRetryDelay: retryDelay,
+        },
+    });
 
     while (true) {
         try {
@@ -601,16 +692,45 @@ export async function generateTrueOrFalse({
                 runtime,
                 context,
                 modelClass,
+                parent: span, // Pass span as parent
             });
 
             const parsedResponse = parseBooleanFromText(response.trim());
             if (parsedResponse !== null) {
+                span.end({
+                    output: {
+                        rawResponse: response,
+                        parsedValue: parsedResponse,
+                        success: true,
+                        totalRetries: (retryDelay - 1000) / 1000, // Calculate number of retries from delay
+                    },
+                });
                 return parsedResponse;
             }
+
+            // Log failed parsing attempt
+            span.event({
+                name: "parsing_failed",
+                metadata: {
+                    rawResponse: response,
+                    nextRetryDelay: retryDelay * 2,
+                },
+            });
         } catch (error) {
+            // Log error but continue retry loop
+            span.event({
+                name: "generation_error",
+                level: "ERROR",
+                metadata: {
+                    error:
+                        error instanceof Error ? error.message : String(error),
+                    nextRetryDelay: retryDelay * 2,
+                },
+            });
             elizaLogger.error("Error in generateTrueOrFalse:", error);
         }
 
+        // Wait before retrying
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
         retryDelay *= 2;
     }
@@ -810,21 +930,23 @@ export const generateImage = async (
     data?: string[];
     error?: any;
 }> => {
-    const { prompt, width, height } = data;
-    let { count } = data;
-    if (!count) {
-        count = 1;
-    }
+    const model = getModel(runtime.imageModelProvider, ModelClass.IMAGE);
+    const modelSettings = models[runtime.imageModelProvider].imageSettings;
 
-    const model = getModel(runtime.character.modelProvider, ModelClass.IMAGE);
-    const modelSettings = models[runtime.character.modelProvider].imageSettings;
+    elizaLogger.info("Generating image with options:", {
+        imageModelProvider: model,
+    });
+
     const apiKey =
-        runtime.token ??
-        runtime.getSetting("HEURIST_API_KEY") ??
-        runtime.getSetting("TOGETHER_API_KEY") ??
-        runtime.getSetting("OPENAI_API_KEY");
+        runtime.imageModelProvider === runtime.modelProvider
+            ? runtime.token
+            : (runtime.getSetting("HEURIST_API_KEY") ??
+              runtime.getSetting("TOGETHER_API_KEY") ??
+              runtime.getSetting("FAL_API_KEY") ??
+              runtime.getSetting("OPENAI_API_KEY"));
+
     try {
-        if (runtime.character.modelProvider === ModelProviderName.HEURIST) {
+        if (runtime.imageModelProvider === ModelProviderName.HEURIST) {
             const response = await fetch(
                 "http://sequencer.heurist.xyz/submit_job",
                 {
@@ -862,37 +984,114 @@ export const generateImage = async (
             const imageURL = await response.json();
             return { success: true, data: [imageURL] };
         } else if (
-            runtime.character.modelProvider === ModelProviderName.LLAMACLOUD
+            runtime.imageModelProvider === ModelProviderName.TOGETHER ||
+            // for backwards compat
+            runtime.imageModelProvider === ModelProviderName.LLAMACLOUD
         ) {
             const together = new Together({ apiKey: apiKey as string });
             const response = await together.images.create({
                 model: "black-forest-labs/FLUX.1-schnell",
-                prompt,
-                width,
-                height,
+                prompt: data.prompt,
+                width: data.width,
+                height: data.height,
                 steps: modelSettings?.steps ?? 4,
-                n: count,
+                n: data.count,
             });
-            const urls: string[] = [];
-            for (let i = 0; i < response.data.length; i++) {
-                const json = response.data[i].b64_json;
-                // decode base64
-                const base64 = Buffer.from(json, "base64").toString("base64");
-                urls.push(base64);
+
+            // Add type assertion to handle the response properly
+            const togetherResponse =
+                response as unknown as TogetherAIImageResponse;
+
+            if (
+                !togetherResponse.data ||
+                !Array.isArray(togetherResponse.data)
+            ) {
+                throw new Error("Invalid response format from Together AI");
             }
+
+            // Rest of the code remains the same...
             const base64s = await Promise.all(
-                urls.map(async (url) => {
-                    const response = await fetch(url);
-                    const blob = await response.blob();
-                    const buffer = await blob.arrayBuffer();
-                    let base64 = Buffer.from(buffer).toString("base64");
-                    base64 = "data:image/jpeg;base64," + base64;
-                    return base64;
+                togetherResponse.data.map(async (image) => {
+                    if (!image.url) {
+                        elizaLogger.error("Missing URL in image data:", image);
+                        throw new Error("Missing URL in Together AI response");
+                    }
+
+                    // Fetch the image from the URL
+                    const imageResponse = await fetch(image.url);
+                    if (!imageResponse.ok) {
+                        throw new Error(
+                            `Failed to fetch image: ${imageResponse.statusText}`
+                        );
+                    }
+
+                    // Convert to blob and then to base64
+                    const blob = await imageResponse.blob();
+                    const arrayBuffer = await blob.arrayBuffer();
+                    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+                    // Return with proper MIME type
+                    return `data:image/jpeg;base64,${base64}`;
                 })
             );
+
+            if (base64s.length === 0) {
+                throw new Error("No images generated by Together AI");
+            }
+
+            elizaLogger.debug(`Generated ${base64s.length} images`);
+            return { success: true, data: base64s };
+        } else if (runtime.imageModelProvider === ModelProviderName.FAL) {
+            fal.config({
+                credentials: apiKey as string,
+            });
+
+            // Prepare the input parameters according to their schema
+            const input = {
+                prompt: data.prompt,
+                image_size: "square" as const,
+                num_inference_steps: modelSettings?.steps ?? 50,
+                guidance_scale: data.guidanceScale || 3.5,
+                num_images: data.count,
+                enable_safety_checker: true,
+                output_format: "png" as const,
+                seed: data.seed ?? 6252023,
+                ...(runtime.getSetting("FAL_AI_LORA_PATH")
+                    ? {
+                          loras: [
+                              {
+                                  path: runtime.getSetting("FAL_AI_LORA_PATH"),
+                                  scale: 1,
+                              },
+                          ],
+                      }
+                    : {}),
+            };
+
+            // Subscribe to the model
+            const result = await fal.subscribe(model, {
+                input,
+                logs: true,
+                onQueueUpdate: (update) => {
+                    if (update.status === "IN_PROGRESS") {
+                        elizaLogger.info(update.logs.map((log) => log.message));
+                    }
+                },
+            });
+
+            // Convert the returned image URLs to base64 to match existing functionality
+            const base64Promises = result.data.images.map(async (image) => {
+                const response = await fetch(image.url);
+                const blob = await response.blob();
+                const buffer = await blob.arrayBuffer();
+                const base64 = Buffer.from(buffer).toString("base64");
+                return `data:${image.content_type};base64,${base64}`;
+            });
+
+            const base64s = await Promise.all(base64Promises);
             return { success: true, data: base64s };
         } else {
-            let targetSize = `${width}x${height}`;
+            let targetSize = `${data.width}x${data.height}`;
             if (
                 targetSize !== "1024x1024" &&
                 targetSize !== "1792x1024" &&
@@ -903,9 +1102,9 @@ export const generateImage = async (
             const openai = new OpenAI({ apiKey: apiKey as string });
             const response = await openai.images.generate({
                 model,
-                prompt,
+                prompt: data.prompt,
                 size: targetSize as "1024x1024" | "1792x1024" | "1024x1792",
-                n: count,
+                n: data.count,
                 response_format: "b64_json",
             });
             const base64s = response.data.map(
@@ -942,13 +1141,46 @@ export const generateCaption = async (
         description: resp.description.trim(),
     };
 };
+
+export const generateWebSearch = async (
+    query: string,
+    runtime: IAgentRuntime
+): Promise<SearchResponse> => {
+    const apiUrl = "https://api.tavily.com/search";
+    const apiKey = runtime.getSetting("TAVILY_API_KEY");
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                api_key: apiKey,
+                query,
+                include_answer: true,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new elizaLogger.error(
+                `HTTP error! status: ${response.status}`
+            );
+        }
+
+        const data: SearchResponse = await response.json();
+        return data;
+    } catch (error) {
+        elizaLogger.error("Error:", error);
+    }
+};
 /**
  * Configuration options for generating objects with a model.
  */
 export interface GenerationOptions {
     runtime: IAgentRuntime;
     context: string;
-    modelClass: TiktokenModel;
+    modelClass: ModelClass;
     schema?: ZodSchema;
     schemaName?: string;
     schemaDescription?: string;
@@ -993,7 +1225,7 @@ export const generateObjectV2 = async ({
     }
 
     const provider = runtime.modelProvider;
-    const model = models[provider].model[modelClass];
+    const model = models[provider].model[modelClass] as TiktokenModel;
     if (!model) {
         throw new Error(`Unsupported model class: ${modelClass}`);
     }
@@ -1005,7 +1237,7 @@ export const generateObjectV2 = async ({
     const apiKey = runtime.token;
 
     try {
-        context = await trimTokens(context, max_context_length, "gpt-4o");
+        context = trimTokens(context, max_context_length, model);
 
         const modelOptions: ModelSettings = {
             prompt: context,
@@ -1068,7 +1300,10 @@ export async function handleProvider(
     switch (provider) {
         case ModelProviderName.OPENAI:
         case ModelProviderName.ETERNALAI:
+        case ModelProviderName.ALI_BAILIAN:
+        case ModelProviderName.VOLENGINE:
         case ModelProviderName.LLAMACLOUD:
+        case ModelProviderName.TOGETHER:
             return await handleOpenAI(options);
         case ModelProviderName.ANTHROPIC:
             return await handleAnthropic(options);
@@ -1310,4 +1545,13 @@ async function handleOllama({
         mode,
         ...modelOptions,
     });
+}
+
+// Add type definition for Together AI response
+interface TogetherAIImageResponse {
+    data: Array<{
+        url: string;
+        content_type?: string;
+        image_type?: string;
+    }>;
 }

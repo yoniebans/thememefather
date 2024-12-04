@@ -59,7 +59,7 @@ export function WalletButton() {
             <Button
                 variant="outline"
                 onClick={() => window.open("https://phantom.app/", "_blank")}
-                className="bg-purple-500 hover:bg-purple-600 text-white"
+                className="bg-[#EC4899] hover:bg-[#DB2777]/90 text-black rounded-xl border-2 border-black"
             >
                 <Wallet className="h-4 w-4 mr-2" />
                 Install Phantom
@@ -71,7 +71,7 @@ export function WalletButton() {
         <Button
             variant="outline"
             onClick={disconnectWallet}
-            className="bg-purple-500 hover:bg-purple-600 text-white"
+            className="bg-[#EC4899] hover:bg-[#DB2777]/90 text-black rounded-xl border-2 border-black"
         >
             <Wallet className="h-4 w-4 mr-2" />
             {publicKey?.slice(0, 4)}...{publicKey?.slice(-4)}
@@ -80,7 +80,7 @@ export function WalletButton() {
         <Button
             variant="outline"
             onClick={connectWallet}
-            className="bg-purple-500 hover:bg-purple-600 text-white"
+            className="bg-[#EC4899] hover:bg-[#DB2777]/90 text-black rounded-xl border-2 border-black"
         >
             <Wallet className="h-4 w-4 mr-2" />
             Connect Wallet

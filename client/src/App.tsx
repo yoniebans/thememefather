@@ -1,312 +1,291 @@
 import "./App.css";
-// import Agents from "./Agents";
-
-import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowBigUp, Github, Twitter } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Github, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import eldonImage from "@/assets/eldon.png";
+import fontboltImage from "@/assets/fontbolt.png";
+import whatscookingImage from "@/assets/whats_cooking.png";
+import theplugImage from "@/assets/the_plug.png";
+import skylineImage from "@/assets/skyline_v2.png";
 import { WalletButton } from "@/components/WalletButton";
 import { WalletProvider, useWallet } from "@/context/WalletContext";
+import Chat from "./Chat";
+import { useState } from "react";
+import { MemeModal } from "@/components/MemeModal";
 
-type TextResponse = {
-    text: string;
-    user: string;
-};
+interface Meme {
+    id: string;
+    ticker: string;
+    description: string;
+    votes: number;
+    author: string;
+    timestamp: string;
+    url?: string;
+}
 
 function AppContent() {
-    const { connected, publicKey } = useWallet();
-    const [input, setInput] = useState("");
-    const [messages, setMessages] = useState<TextResponse[]>([]);
-    const [showChat, setShowChat] = useState(false);
-    const [loadingDots, setLoadingDots] = useState(".");
+    const { connected } = useWallet();
+    const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
 
-    useEffect(() => {
-        if (!connected) {
-            setMessages([]);
-            setShowChat(false);
-        }
-    }, [connected, publicKey]);
-
-    const mutation = useMutation({
-        mutationFn: async (text: string) => {
+    // Add memes query
+    const { data: memesData, isLoading: memesLoading } = useQuery({
+        queryKey: ["memes"],
+        queryFn: async () => {
             const res = await fetch(
-                `/api/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/message`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        text,
-                        userId: publicKey,
-                        roomId: "meme-generation-frontend",
-                    }),
-                }
+                `/api/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/memes`
             );
-            return res.json() as Promise<TextResponse[]>;
+            const data = await res.json();
+            console.log("Received memes data:", data.memes);
+            return data.memes as Meme[];
         },
-        onSuccess: (data) => {
-            console.log(data);
-            const newMessage = data[data.length - 1];
-            setMessages((prev) => [...prev, newMessage].slice(-4));
-        },
+        refetchInterval: 30000, // Refetch every 30 seconds
     });
 
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-
-        if (mutation.isPending) {
-            interval = setInterval(() => {
-                setLoadingDots((prev) => (prev === "..." ? "." : prev + "."));
-            }, 500);
-        }
-
-        return () => clearInterval(interval);
-    }, [mutation.isPending]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!input.trim()) return;
-
-        // Add user message
-        const userMessage: TextResponse = {
-            text: input,
-            user: "user",
-        };
-        setMessages((prev) => [...prev, userMessage].slice(-4));
-
-        mutation.mutate(input);
-        setInput("");
-    };
+    // Format memes for frontend
+    const formattedMemes = memesData?.map((meme) => (
+        <Card
+            key={meme.id}
+            className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 shadow-2xl text-white font-mono cursor-pointer transition-all hover:scale-[1.02]"
+            onClick={() => setSelectedMeme(meme)}
+        >
+            <div className="p-4 flex justify-between items-start">
+                <div className="space-y-1">
+                    <h3 className="text-lg font-semibold">
+                        <span className="text-green-500">
+                            {meme.votes.toString().padStart(3, '0')}
+                        </span>
+                        <span className="text-zinc-500 mx-2">|</span>
+                        <span className="text-[#EC4899]">{meme.ticker}</span>
+                    </h3>
+                    <p className="text-sm text-zinc-400">by {meme.author}</p>
+                    <p className="text-xs text-zinc-500">
+                        {new Date(parseInt(meme.timestamp)).toLocaleDateString()}{" "}
+                        {new Date(parseInt(meme.timestamp)).toLocaleTimeString()}{" "}
+                        UTC
+                    </p>
+                </div>
+                {meme.url && (
+                    <div className="w-16 h-16 flex-shrink-0">
+                        <img
+                            src={meme.url}
+                            alt="Meme"
+                            className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
+        </Card>
+    ));
 
     return (
-        <main className="min-h-screen w-full">
-            {/* Chat Overlay */}
-            {showChat && (
-                <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-zinc-900 rounded-xl w-full max-w-2xl p-6 shadow-2xl border border-zinc-800">
-                        <div className="min-h-[200px] mb-4 flex flex-col justify-center space-y-4">
-                            {messages.length === 0 ? (
-                                <p className="text-zinc-400 text-center">
-                                    You come to me, on this day of maximum
-                                    market volatility, asking for alpha?
-                                </p>
-                            ) : (
-                                messages.map((message, index) => (
-                                    <div
-                                        key={index}
-                                        className={`flex ${
-                                            message.user === "user"
-                                                ? "justify-end"
-                                                : "justify-start"
-                                        }`}
-                                    >
-                                        <div
-                                            className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                                                message.user === "user"
-                                                    ? "bg-pink-500 text-white"
-                                                    : "bg-zinc-800 text-white"
-                                            }`}
-                                        >
-                                            {message.text}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                            {mutation.isPending && (
-                                <p className="text-zinc-400 text-center">
-                                    {loadingDots}
-                                </p>
-                            )}
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="flex gap-2">
-                            <Input
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                placeholder="Tell me, my child..."
-                                className="flex-1 bg-zinc-800 border-zinc-700 text-white"
-                                disabled={mutation.isPending}
-                            />
-                            <Button
-                                type="submit"
-                                disabled={mutation.isPending}
-                                className="bg-pink-500 hover:bg-pink-600 text-white font-semibold"
-                            >
-                                Send
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setShowChat(false)}
-                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-                            >
-                                Close
-                            </Button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
+        <main className="min-h-screen w-full bg-black/80">
             {/* Hero Section */}
-            <div className="min-h-screen relative w-full flex flex-col bg-[url('/src/assets/background.png')] bg-cover bg-center bg-no-repeat">
-                {/* Social Links */}
-                <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <WalletButton />
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="bg-[#1DA1F2] hover:bg-[#1DA1F2]/90 text-white rounded-xl"
-                            onClick={() =>
-                                window.open(
-                                    "https://x.com/the_meme_father",
-                                    "_blank"
-                                )
-                            }
-                        >
-                            <Twitter className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="bg-[#0088cc] hover:bg-[#0088cc]/90 text-white rounded-xl"
-                            onClick={() =>
-                                window.open(
-                                    "https://github.com/yoniebans/the_mf",
-                                    "_blank"
-                                )
-                            }
-                        >
-                            <Github className="h-4 w-4" />
-                        </Button>
+            <div className="min-h-screen relative w-full flex flex-col bg-[url('/src/assets/background_v2.png')] bg-cover bg-center bg-no-repeat">
+                {/* Logo and Social Links */}
+                <div className="absolute top-4 w-full px-4 flex justify-between items-center">
+                    {/* Logo */}
+                    <img
+                        src={fontboltImage}
+                        alt="Logo"
+                        className="h-12 w-auto"
+                    />
+
+                    {/* Social Links */}
+                    <div className="flex items-center gap-2">
+                        <WalletButton />
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="bg-[#EC4899] hover:bg-[#DB2777]/90 text-black rounded-xl border-2 border-black"
+                                onClick={() =>
+                                    window.open(
+                                        "https://x.com/the_meme_father",
+                                        "_blank"
+                                    )
+                                }
+                            >
+                                <Twitter className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="bg-[#EC4899] hover:bg-[#DB2777]/90 text-black rounded-xl border-2 border-black"
+                                onClick={() =>
+                                    window.open(
+                                        "https://github.com/yoniebans/the_mf",
+                                        "_blank"
+                                    )
+                                }
+                            >
+                                <Github className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 flex items-end justify-start">
-                    <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-start gap-20">
-                            {/* Image */}
-                            <div className="w-[800px] h-[800px] flex-shrink-0 -ml-10">
-                                <img
-                                    src={eldonImage}
-                                    alt="El Don"
-                                    className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.2)]"
-                                    style={{
-                                        imageRendering: "crisp-edges",
-                                        WebkitBackdropFilter: "none",
-                                        backdropFilter: "none",
-                                    }}
-                                />
-                            </div>
-
-                            {/* Text and Button */}
-                            <div className="text-center self-center">
-                                <div className="flex gap-4 justify-center">
-                                    <Button
-                                        className="text-xl px-8 py-6 bg-pink-500 hover:bg-pink-600 rounded-xl font-bold shadow-lg hover:shadow-pink-500/25 transition-all duration-300"
-                                        onClick={() => setShowChat(true)}
-                                        disabled={!connected}
-                                    >
-                                        {connected
-                                            ? "SPEAK WITH THE FATHER"
-                                            : "CONNECT WALLET TO SPEAK"}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
+                <div className="flex-1 flex items-center justify-center w-full">
+                    <div className="w-full flex items-center justify-center">
+                        {/* Chat Section - Only show when connected */}
+                        {connected && <Chat />}
                     </div>
                 </div>
 
                 {/* Banner */}
                 <div className="w-full overflow-hidden py-4 bg-black/10">
                     <div className="flex whitespace-nowrap animate-scroll">
-                        {/* First set of items */}
-                        {Array(10)
-                            .fill("$THEMEMEFATHER")
-                            .map((text, index) => (
-                                <span
-                                    key={`first-${index}`}
-                                    className="text-2xl font-bold mx-8 text-white"
-                                >
-                                    {text}
-                                </span>
-                            ))}
-                        {/* Duplicate set for seamless loop */}
-                        {Array(10)
-                            .fill("$THEMEMEFATHER")
-                            .map((text, index) => (
-                                <span
-                                    key={`second-${index}`}
-                                    className="text-2xl font-bold mx-8 text-white"
-                                >
-                                    {text}
-                                </span>
-                            ))}
+                        {/* Single set that gets duplicated by CSS */}
+                        {memesData
+                            ? [...Array(20)].map((_, index) => (
+                                  <span
+                                      key={index}
+                                      className="text-2xl font-bold mx-8 text-[#EC4899] [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]"
+                                  >
+                                      {memesData[index % memesData.length]
+                                          ?.ticker || "$MEMEFATHER"}
+                                  </span>
+                              ))
+                            : Array(20)
+                                  .fill("$MEMEFATHER")
+                                  .map((text, index) => (
+                                      <span
+                                          key={index}
+                                          className="text-2xl font-bold mx-8 text-[#EC4899] [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]"
+                                      >
+                                          {text}
+                                      </span>
+                                  ))}
                     </div>
                 </div>
             </div>
 
-            {/* Leaderboard Section */}
-            <div className="min-h-screen bg-black py-20 w-full">
-                <div className="container mx-auto px-4">
-                    <h2 className="text-4xl md:text-6xl font-bold text-center mb-12 text-white">
-                        Meme Leaderboard 🏆
-                    </h2>
-                    <div className="grid gap-6 max-w-2xl mx-auto">
-                        {[
-                            {
-                                id: 1,
-                                votes: 420,
-                                title: "When you buy the dip but it keeps dipping",
-                                author: "memeLord",
-                            },
-                            {
-                                id: 2,
-                                votes: 369,
-                                title: "POV: Checking your portfolio in 2024",
-                                author: "cryptoKing",
-                            },
-                            {
-                                id: 3,
-                                votes: 169,
-                                title: "Web3 developers be like",
-                                author: "blockchainBro",
-                            },
-                        ].map((meme) => (
-                            <Card
-                                key={meme.id}
-                                className="p-4 bg-zinc-900 border-zinc-800"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-green-500 hover:text-green-400 hover:bg-green-500/10"
-                                    >
-                                        <ArrowBigUp className="h-8 w-8" />
-                                    </Button>
-                                    <div className="flex-1">
-                                        <h3 className="text-lg font-semibold text-white">
-                                            {meme.title}
-                                        </h3>
-                                        <p className="text-sm text-zinc-400">
-                                            by {meme.author}
-                                        </p>
-                                    </div>
-                                    <div className="text-xl font-bold text-green-500">
-                                        {meme.votes}
-                                    </div>
+            {/* The Plug Section */}
+            <div className="relative w-full flex flex-col bg-cover bg-center bg-no-repeat bg-black/95">
+                <div className="w-full h-full backdrop-blur-sm bg-black/10 py-16">
+                    <div className="container mx-auto px-4">
+                        <div className="mb-4">
+                            <img
+                                src={theplugImage}
+                                alt="the plug"
+                                className="h-12 w-auto"
+                            />
+                        </div>
+                        {/* Flowchart Container */}
+                        <div className="relative flex flex-col items-center">
+                            {/* Blob Container */}
+                            <div className="w-full flex flex-wrap justify-between items-center gap-8 md:gap-4">
+                                {/* Blob 1 - Interactions */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        01_interactions {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        web app console & twitter. the meme
+                                        father acquires knowledge and ideas from
+                                        interactions
+                                    </p>
                                 </div>
-                            </Card>
-                        ))}
+
+                                {/* Blob 2 - Ideation */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        02_ideation {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        the meme father spawns new memes into
+                                        life. They go into the melting pot as
+                                        candidates for launch
+                                    </p>
+                                </div>
+
+                                {/* Blob 3 - Classification */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        03_classification {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        the meme father mulls over these ideas
+                                        daily. he ranks them based on memetic
+                                        power
+                                    </p>
+                                </div>
+
+                                {/* Blob 4 - Launch */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        04_launch {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        every seventh day, he births a new meme
+                                        on pump.fun and communicates via his
+                                        channels
+                                    </p>
+                                </div>
+
+                                {/* Blob 5 - Reset */}
+                                <div className="bg-black/80 backdrop-blur-sm border border-zinc-800 shadow-2xl text-white font-mono p-6 rounded-lg w-64 relative">
+                                    <h3 className="text-[#EC4899] mb-2">
+                                        05_reset {">"}
+                                    </h3>
+                                    <p className="text-sm text-zinc-400">
+                                        the slate is cleaned and the process
+                                        repeats. Only the best memes make the
+                                        cut
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Meme Leaderboard */}
+            <div
+                className="min-h-screen relative w-full flex flex-col bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: `url(${skylineImage})` }}
+            >
+                <div className="w-full h-full backdrop-blur-sm bg-black/10 py-4">
+                    <div className="container mx-auto px-4">
+                        <div className="mb-4">
+                            <img
+                                src={whatscookingImage}
+                                alt="vires in memeris"
+                                className="h-12 w-auto"
+                            />
+                        </div>
+                        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                            {memesLoading
+                                ? // Show loading skeletons
+                                  Array(6)
+                                      .fill(0)
+                                      .map((_, i) => (
+                                          <Card
+                                              key={i}
+                                              className="backdrop-blur-sm bg-white/5 border-zinc-800/50 shadow-xl"
+                                          >
+                                              <div className="p-4 space-y-3">
+                                                  <div className="h-4 w-3/4 bg-zinc-800/50 rounded animate-pulse" />
+                                                  <div className="h-3 w-1/2 bg-zinc-800/50 rounded animate-pulse" />
+                                              </div>
+                                          </Card>
+                                      ))
+                                : formattedMemes}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Modal */}
+            {selectedMeme && (
+                <MemeModal
+                    meme={selectedMeme}
+                    onClose={() => setSelectedMeme(null)}
+                />
+            )}
         </main>
     );
 }

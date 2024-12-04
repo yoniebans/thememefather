@@ -1,6 +1,6 @@
 export * from "./services/index.ts";
 
-import { Plugin } from "@ai16z/eliza";
+import { elizaLogger, Plugin } from "@ai16z/eliza";
 
 import {
     BrowserService,
@@ -12,10 +12,10 @@ import {
     VideoService,
 } from "./services/index.ts";
 
-
-export type NodePlugin = ReturnType<typeof createNodePlugin>
+export type NodePlugin = ReturnType<typeof createNodePlugin>;
 
 export function createNodePlugin() {
+    elizaLogger.info("Creating Node plugin");
     return {
         name: "default",
         description: "Default plugin, with basic actions and evaluators",
@@ -28,5 +28,5 @@ export function createNodePlugin() {
             new TranscriptionService(),
             new VideoService(),
         ],
-    } as const satisfies Plugin
-};
+    } as const satisfies Plugin;
+}

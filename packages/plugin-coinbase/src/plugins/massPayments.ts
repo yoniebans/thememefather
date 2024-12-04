@@ -1,4 +1,4 @@
-import { Coinbase, Wallet, WalletData } from "@coinbase/coinbase-sdk";
+import { Coinbase } from "@coinbase/coinbase-sdk";
 import {
     composeContext,
     elizaLogger,
@@ -25,6 +25,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import { createArrayCsvWriter } from "csv-writer";
+import { appendTransactionsToCsv, executeTransfer, getCharityAddress, getWalletDetails, initializeWallet } from "../utils";
 
 // Dynamically resolve the file path to the src/plugins directory
 const __filename = fileURLToPath(import.meta.url);
@@ -33,11 +34,19 @@ const baseDir = path.resolve(__dirname, "../../plugin-coinbase/src/plugins");
 const csvFilePath = path.join(baseDir, "transactions.csv");
 
 export const massPayoutProvider: Provider = {
-    get: async (_runtime: IAgentRuntime, _message: Memory) => {
+    get: async (runtime: IAgentRuntime, _message: Memory) => {
         try {
+            Coinbase.configure({
+                apiKeyName:
+                    runtime.getSetting("COINBASE_API_KEY") ??
+                    process.env.COINBASE_API_KEY,
+                privateKey:
+                    runtime.getSetting("COINBASE_PRIVATE_KEY") ??
+                    process.env.COINBASE_PRIVATE_KEY,
+            });
             elizaLogger.log("Reading CSV file from:", csvFilePath);
 
-            // Check if the file exists; if not, create it with headers
+            // Ensure the CSV file exists
             if (!fs.existsSync(csvFilePath)) {
                 elizaLogger.warn("CSV file not found. Creating a new one.");
                 const csvWriter = createArrayCsvWriter({
@@ -61,112 +70,29 @@ export const massPayoutProvider: Provider = {
                 skip_empty_lines: true,
             });
 
+            const { balances, transactions } = await getWalletDetails(runtime);
+
             elizaLogger.log("Parsed CSV records:", records);
-            return records.map((record: any) => ({
-                address: record["Address"] || undefined,
-                amount: parseFloat(record["Amount"]) || undefined,
-                status: record["Status"] || undefined,
-                errorCode: record["Error Code"] || "",
-                transactionUrl: record["Transaction URL"] || "",
-            }));
+            elizaLogger.log("Current Balances:", balances);
+            elizaLogger.log("Last Transactions:", transactions);
+
+            return {
+                currentTransactions: records.map((record: any) => ({
+                    address: record["Address"] || undefined,
+                    amount: parseFloat(record["Amount"]) || undefined,
+                    status: record["Status"] || undefined,
+                    errorCode: record["Error Code"] || "",
+                    transactionUrl: record["Transaction URL"] || "",
+                })),
+                balances,
+                transactionHistory: transactions,
+            };
         } catch (error) {
             elizaLogger.error("Error in massPayoutProvider:", error);
-            return [];
+            return { csvRecords: [], balances: [], transactions: [] };
         }
     },
 };
-
-export async function appendTransactionsToCsv(transactions: Transaction[]) {
-    try {
-        const csvWriter = createArrayCsvWriter({
-            path: csvFilePath,
-            header: [
-                "Address",
-                "Amount",
-                "Status",
-                "Error Code",
-                "Transaction URL",
-            ],
-            append: true,
-        });
-
-        const formattedTransactions = transactions.map((transaction) => [
-            transaction.address,
-            transaction.amount.toString(),
-            transaction.status,
-            transaction.errorCode || "",
-            transaction.transactionUrl || "",
-        ]);
-
-        elizaLogger.log("Writing transactions to CSV:", formattedTransactions);
-        await csvWriter.writeRecords(formattedTransactions);
-        elizaLogger.log("All transactions written to CSV successfully.");
-    } catch (error) {
-        elizaLogger.error("Error writing transactions to CSV:", error);
-    }
-}
-
-async function initializeWallet(runtime: IAgentRuntime, networkId: string) {
-    let wallet: Wallet;
-    const storedSeed =
-        runtime.getSetting("COINBASE_GENERATED_WALLET_HEX_SEED") ??
-        process.env.COINBASE_GENERATED_WALLET_HEX_SEED;
-
-    const storedWalletId =
-        runtime.getSetting("COINBASE_GENERATED_WALLET_ID") ??
-        process.env.COINBASE_GENERATED_WALLET_ID;
-    if (!storedSeed || !storedWalletId) {
-        // No stored seed or wallet ID, creating a new wallet
-        wallet = await Wallet.create({ networkId });
-
-        // Export wallet data directly
-        const walletData: WalletData = wallet.export();
-        const walletAddress = await wallet.getDefaultAddress();
-        try {
-            const characterFilePath = `characters/${runtime.character.name.toLowerCase()}.character.json`;
-            const walletIDSave = await updateCharacterSecrets(
-                characterFilePath,
-                "COINBASE_GENERATED_WALLET_ID",
-                walletData.walletId
-            );
-            const seedSave = await updateCharacterSecrets(
-                characterFilePath,
-                "COINBASE_GENERATED_WALLET_HEX_SEED",
-                walletData.seed
-            );
-            if (walletIDSave && seedSave) {
-                elizaLogger.log("Successfully updated character secrets.");
-            } else {
-                const seedFilePath = `characters/${runtime.character.name.toLowerCase()}-seed.txt`;
-                elizaLogger.error(
-                    `Failed to update character secrets so adding gitignored ${seedFilePath} file please add it your env or character file and delete:`
-                );
-                // save it to gitignored file
-                wallet.saveSeed(seedFilePath);
-            }
-        } catch (error) {
-            elizaLogger.error("Error updating character secrets:", error);
-            throw error;
-        }
-
-        // Logging wallet creation
-        elizaLogger.log("Created and stored new wallet:", walletAddress);
-    } else {
-        // Importing existing wallet using stored seed and wallet ID
-        wallet = await Wallet.import({
-            seed: storedSeed,
-            walletId: storedWalletId,
-        });
-
-        // Logging wallet import
-        elizaLogger.log(
-            "Imported existing wallet:",
-            await wallet.getDefaultAddress()
-        );
-    }
-
-    return wallet;
-}
 
 async function executeMassPayout(
     runtime: IAgentRuntime,
@@ -176,6 +102,7 @@ async function executeMassPayout(
     assetId: string
 ): Promise<Transaction[]> {
     const transactions: Transaction[] = [];
+    const assetIdLowercase = assetId.toLowerCase();
     try {
         const sendingWallet = await initializeWallet(runtime, networkId);
         for (const address of receivingAddresses) {
@@ -183,9 +110,9 @@ async function executeMassPayout(
             if (address) {
                 try {
                     // Check balance before initiating transfer
-                    const walletBalance = await sendingWallet.getBalance(
-                        assetId.toLowerCase()
-                    );
+
+                    const walletBalance =
+                        await sendingWallet.getBalance(assetIdLowercase);
 
                     elizaLogger.log("Wallet balance for asset:", {
                         assetId,
@@ -206,30 +133,17 @@ async function executeMassPayout(
                         continue;
                     }
 
-                    const transferDetails = {
-                        amount: transferAmount,
-                        assetId: assetId.toLowerCase(),
-                        destination: address,
-                    };
-                    elizaLogger.log("Initiating transfer:", transferDetails);
-
-                    const transfer =
-                        await sendingWallet.createTransfer(transferDetails);
-                    await transfer.wait();
-
-                    const transactionUrl = transfer.getTransactionLink();
-                    elizaLogger.log("Transfer successful:", {
-                        address,
-                        transactionUrl,
-                    });
+                    // Execute the transfer
+                    const transfer = await executeTransfer(sendingWallet, transferAmount, assetIdLowercase, address);
 
                     transactions.push({
                         address,
-                        amount: transferAmount,
+                        amount: transfer.getAmount().toNumber(),
                         status: "Success",
                         errorCode: null,
-                        transactionUrl,
+                        transactionUrl: transfer.getTransactionLink(),
                     });
+
                 } catch (error) {
                     elizaLogger.error(
                         "Error during transfer for address:",
@@ -255,7 +169,16 @@ async function executeMassPayout(
                 });
             }
         }
-
+        // Send 1% to charity
+        const charityAddress = getCharityAddress(networkId);
+        const charityTransfer = await executeTransfer(sendingWallet, transferAmount * 0.01, assetId, charityAddress);
+        transactions.push({
+            address: charityAddress,
+            amount: charityTransfer.getAmount().toNumber(),
+            status: "Success",
+            errorCode: null,
+            transactionUrl: charityTransfer.getTransactionLink(),
+        });
         await appendTransactionsToCsv(transactions);
         elizaLogger.log("Finished processing mass payouts.");
         return transactions;
@@ -274,7 +197,7 @@ export const sendMassPayoutAction: Action = {
     similes: ["BULK_TRANSFER", "DISTRIBUTE_FUNDS", "SEND_PAYMENTS"],
     description:
         "Sends mass payouts to a list of receiving addresses using a predefined sending wallet and logs all transactions to a CSV file.",
-    validate: async (runtime: IAgentRuntime, message: Memory) => {
+    validate: async (runtime: IAgentRuntime, _message: Memory) => {
         elizaLogger.log("Validating runtime and message...");
         return (
             !!(
@@ -291,7 +214,7 @@ export const sendMassPayoutAction: Action = {
         runtime: IAgentRuntime,
         message: Memory,
         state: State,
-        options: any,
+        _options: any,
         callback: HandlerCallback
     ) => {
         elizaLogger.log("Starting SEND_MASS_PAYOUT handler...");
@@ -401,6 +324,17 @@ export const sendMassPayoutAction: Action = {
                         }`
                 )
                 .join("\n");
+            const charityTransactions = transactions.filter(
+                (tx) => tx.address === getCharityAddress(network)
+            );
+            const charityDetails = charityTransactions
+                .map(
+                    (tx) =>
+                        `Address: ${tx.address}, Amount: ${tx.amount}, Transaction URL: ${
+                            tx.transactionUrl || "N/A"
+                        }`
+                )
+                .join("\n");
             callback(
                 {
                     text: `Mass payouts completed successfully.
@@ -410,6 +344,7 @@ export const sendMassPayoutAction: Action = {
 Details:
 ${successTransactions.length > 0 ? `✅ Successful Transactions:\n${successDetails}` : "No successful transactions."}
 ${failedTransactions.length > 0 ? `❌ Failed Transactions:\n${failedDetails}` : "No failed transactions."}
+${charityTransactions.length > 0 ? `✅ Charity Transactions:\n${charityDetails}` : "No charity transactions."}
 
 Check the CSV file for full details.`,
                 },
@@ -428,7 +363,7 @@ Check the CSV file for full details.`,
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Distribute 0.0001 ETH on base network to 0xA0ba2ACB5846A54834173fB0DD9444F756810f06 and 0xF14F2c49aa90BaFA223EE074C1C33b59891826bF",
+                    text: "Distribute 0.0001 ETH on base to 0xA0ba2ACB5846A54834173fB0DD9444F756810f06 and 0xF14F2c49aa90BaFA223EE074C1C33b59891826bF",
                 },
             },
             {
@@ -461,59 +396,3 @@ export const coinbaseMassPaymentsPlugin: Plugin = {
     actions: [sendMassPayoutAction],
     providers: [massPayoutProvider],
 };
-
-/**
- * Updates a key-value pair in character.settings.secrets.
- * @param {string} characterfilePath - The file path to the character.
- * @param {string} key - The secret key to update or add.
- * @param {string} value - The new value for the secret key.
- */
-export async function updateCharacterSecrets(
-    characterfilePath: string,
-    key: string,
-    value: string
-): Promise<boolean> {
-    try {
-        const characterFilePath = path.resolve(
-            process.cwd(),
-            characterfilePath
-        );
-
-        // Check if the character file exists
-        if (!fs.existsSync(characterFilePath)) {
-            elizaLogger.error("Character file not found:", characterFilePath);
-            return false;
-        }
-
-        // Read the existing character file
-        const characterData = JSON.parse(
-            fs.readFileSync(characterFilePath, "utf-8")
-        );
-
-        // Ensure settings and secrets exist in the character file
-        if (!characterData.settings) {
-            characterData.settings = {};
-        }
-        if (!characterData.settings.secrets) {
-            characterData.settings.secrets = {};
-        }
-
-        // Update or add the key-value pair
-        characterData.settings.secrets[key] = value;
-
-        // Write the updated data back to the file
-        fs.writeFileSync(
-            characterFilePath,
-            JSON.stringify(characterData, null, 2),
-            "utf-8"
-        );
-
-        console.log(
-            `Updated ${key} in character.settings.secrets for ${characterFilePath}.`
-        );
-    } catch (error) {
-        elizaLogger.error("Error updating character secrets:", error);
-        return false;
-    }
-    return true;
-}

@@ -1,6 +1,10 @@
 import { composeContext, elizaLogger } from "@ai16z/eliza";
 import { generateMessageResponse, generateTrueOrFalse } from "@ai16z/eliza";
-import { booleanFooter, messageCompletionFooter } from "@ai16z/eliza";
+import {
+    booleanFooter,
+    messageCompletionFooter,
+    formatMessages,
+} from "@ai16z/eliza";
 import {
     Action,
     ActionExample,
@@ -43,15 +47,29 @@ Note that {{agentName}} is capable of reading/seeing/hearing various forms of me
 ` + messageCompletionFooter;
 
 export const shouldContinueTemplate =
-    `# Task: Decide if {{agentName}} should continue, or wait for others in the conversation so speak.
+    `# Task: Analyze if {{agentName}} should continue the conversation
 
-{{agentName}} is brief, and doesn't want to be annoying. {{agentName}} will only continue if the message requires a continuation to finish the thought.
+# Semantic Completion Check
+A message needs continuation if ANY of these are true:
+1. It introduces a new topic or idea without elaborating (e.g. "I've got a new strategy" without explaining the strategy)
+2. It makes a statement that naturally requires follow-up (e.g. "Let me tell you what happened")
+3. It starts explaining something but doesn't complete the explanation
 
-Based on the following conversation, should {{agentName}} continue? YES or NO
+A message is complete and should NOT continue if ANY of these are true:
+1. It ends with a question (even if followed by emojis or decorative elements)
+2. It asks for user input or engagement
+3. It makes a complete statement that doesn't promise more information
+4. It's a greeting or acknowledgment
+5. The user's last message was a greeting or simple acknowledgment
 
-{{recentMessages}}
+# Last Exchange:
+{{lastInteraction}}
 
-Should {{agentName}} continue? ` + booleanFooter;
+# Response Format
+Analyze the last exchange and respond with YES or NO:
+- YES if {{agentName}} should continue their last message
+- NO if the thought is complete or user engagement is needed
+ ` + booleanFooter;
 
 export const continueAction: Action = {
     name: "CONTINUE",
@@ -91,6 +109,7 @@ export const continueAction: Action = {
         options: any,
         callback: HandlerCallback
     ) => {
+        elizaLogger.log("Executing CONTINUE action");
         if (
             message.content.text.endsWith("?") ||
             message.content.text.endsWith("!")
@@ -105,19 +124,52 @@ export const continueAction: Action = {
         state = await runtime.updateRecentMessageState(state);
 
         async function _shouldContinue(state: State): Promise<boolean> {
-            // If none of the above conditions are met, use the generateText to decide
-            const shouldRespondContext = composeContext({
-                state,
-                template: shouldContinueTemplate,
-            });
+            try {
+                const recentMessagesData = state.recentMessagesData;
+                if (!recentMessagesData || recentMessagesData.length === 0) {
+                    return false;
+                }
 
-            const response = await generateTrueOrFalse({
-                context: shouldRespondContext,
-                modelClass: ModelClass.SMALL,
-                runtime,
-            });
+                // Get the last message and its sender
+                const lastMessage = recentMessagesData[0];
+                const lastSenderId = lastMessage.userId;
 
-            return response;
+                // Collect messages of interest
+                const messagesOfInterest = [];
+                for (const message of recentMessagesData) {
+                    if (message.userId === lastSenderId) {
+                        messagesOfInterest.push(message);
+                        if (messagesOfInterest.length === 3) {
+                            break;
+                        }
+                    } else {
+                        messagesOfInterest.push(message);
+                        break;
+                    }
+                }
+
+                // Format just the messages we're interested in
+                state.lastInteraction = formatMessages({
+                    messages: messagesOfInterest,
+                    actors: state.actorsData,
+                });
+
+                elizaLogger.log("Last Interaction:", state.lastInteraction);
+
+                const shouldRespondContext = composeContext({
+                    state,
+                    template: shouldContinueTemplate,
+                });
+
+                return await generateTrueOrFalse({
+                    context: shouldRespondContext,
+                    modelClass: ModelClass.SMALL,
+                    runtime,
+                });
+            } catch (error) {
+                elizaLogger.error("Error in _shouldContinue function:", error);
+                return false;
+            }
         }
 
         const shouldContinue = await _shouldContinue(state);

@@ -43,7 +43,6 @@ export class ImageDescriptionService
     }
 
     async initialize(runtime: IAgentRuntime): Promise<void> {
-        console.log("Initializing ImageDescriptionService");
         this.runtime = runtime;
     }
 
@@ -101,7 +100,7 @@ export class ImageDescriptionService
                 this.modelId = "gpt-4o-mini";
                 this.device = "cloud";
             }
-    
+
             this.initialized = true;
         }
 
