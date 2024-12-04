@@ -202,6 +202,9 @@ export class DirectClient {
                     template: messageHandlerTemplate,
                 });
 
+                elizaLogger.log(
+                    "Generating message response for direct client"
+                );
                 const response = await generateMessageResponse({
                     runtime: runtime,
                     context,
@@ -241,21 +244,29 @@ export class DirectClient {
                 // Transform local file paths to API URLs in the response
                 if (response.attachments) {
                     elizaLogger.log("=== Response Attachments ===");
-                    response.attachments = response.attachments.map(attachment => ({
-                        ...attachment,
-                        url: `/api/${runtime.agentId}/images/${attachment.url.split('/').pop()}`
-                    }));
-                    elizaLogger.log(JSON.stringify(response.attachments, null, 2));
+                    response.attachments = response.attachments.map(
+                        (attachment) => ({
+                            ...attachment,
+                            url: `/api/${runtime.agentId}/images/${attachment.url.split("/").pop()}`,
+                        })
+                    );
+                    elizaLogger.log(
+                        JSON.stringify(response.attachments, null, 2)
+                    );
                 }
 
                 // Also transform attachments in the message if it exists
                 if (message?.attachments) {
                     elizaLogger.log("=== Message Attachments ===");
-                    message.attachments = message.attachments.map(attachment => ({
-                        ...attachment,
-                        url: `/api/${runtime.agentId}/images/${attachment.url.split('/').pop()}`
-                    }));
-                    elizaLogger.log(JSON.stringify(message.attachments, null, 2));
+                    message.attachments = message.attachments.map(
+                        (attachment) => ({
+                            ...attachment,
+                            url: `/api/${runtime.agentId}/images/${attachment.url.split("/").pop()}`,
+                        })
+                    );
+                    elizaLogger.log(
+                        JSON.stringify(message.attachments, null, 2)
+                    );
                 }
 
                 if (message) {
@@ -409,29 +420,33 @@ export class DirectClient {
                 }
 
                 try {
-                    const memoryManager = runtime.getMemoryManager('memes');
+                    const memoryManager = runtime.getMemoryManager("memes");
                     const memes = await memoryManager.getMemories({
                         roomId: runtime.agentId,
                         count: 50,
-                        unique: true
+                        unique: true,
                     });
 
                     // Format memes and sort by createdAt in descending order
                     const formattedMemes = memes
                         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-                        .map(meme => ({
+                        .map((meme) => ({
                             id: meme.id,
-                            ticker: `$${((meme.content.ticker as string) || 'UNKNOWN').toUpperCase()}`,
-                            description: meme.content.description || "No description available",
+                            ticker: `$${((meme.content.ticker as string) || "UNKNOWN").toUpperCase()}`,
+                            description:
+                                meme.content.description ||
+                                "No description available",
                             votes: meme.content.votes || 0,
                             author: meme.userId || "Anonymous",
-                            timestamp: meme.createdAt?.toString() || new Date().toISOString(),
+                            timestamp:
+                                meme.createdAt?.toString() ||
+                                new Date().toISOString(),
                             ...(meme.content.image_url && {
-                                url: `/api/${runtime.agentId}/images/${(meme.content.image_url as string).split('/').pop()}`
+                                url: `/api/${runtime.agentId}/images/${(meme.content.image_url as string).split("/").pop()}`,
                             }),
                             ...(meme.content.last_scored && {
-                                last_scored: meme.content.last_scored
-                            })
+                                last_scored: meme.content.last_scored,
+                            }),
                         }));
 
                     res.json({ memes: formattedMemes });
@@ -439,7 +454,7 @@ export class DirectClient {
                     console.error("Error fetching memes:", error);
                     res.status(500).json({
                         error: "Failed to fetch memes",
-                        details: error.message
+                        details: error.message,
                     });
                 }
             }
@@ -450,7 +465,11 @@ export class DirectClient {
             "/:agentId/images/:filename",
             (req: express.Request, res: express.Response) => {
                 const filename = req.params.filename;
-                const imagePath = path.join(process.cwd(), "generatedImages", filename);
+                const imagePath = path.join(
+                    process.cwd(),
+                    "generatedImages",
+                    filename
+                );
                 res.sendFile(imagePath, (err) => {
                     if (err) {
                         console.error("Error sending file:", err);

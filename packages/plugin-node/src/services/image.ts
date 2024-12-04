@@ -43,7 +43,6 @@ export class ImageDescriptionService
     }
 
     async initialize(runtime: IAgentRuntime): Promise<void> {
-        console.log("Initializing ImageDescriptionService");
         this.runtime = runtime;
     }
 

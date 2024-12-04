@@ -91,6 +91,7 @@ export const continueAction: Action = {
         options: any,
         callback: HandlerCallback
     ) => {
+        elizaLogger.log("Executing CONTINUE action");
         if (
             message.content.text.endsWith("?") ||
             message.content.text.endsWith("!")
