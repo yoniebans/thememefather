@@ -23,8 +23,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 export const messageHandlerTemplate =
     // {{goals}}
-    `# Action Examples
-{{actionExamples}}
+    `{{actionExamples}}
 (Action examples are for reference only. Do not use the information from them in your response.)
 
 # Knowledge
@@ -43,6 +42,8 @@ About {{agentName}}:
 Note that {{agentName}} is capable of reading/seeing/hearing various forms of media, including images, videos, audio, plaintext and PDFs. Recent attachments have been included above under the "Attachments" section.
 
 {{messageDirections}}
+
+{{characterMessageExamples}}
 
 {{recentMessages}}
 
@@ -208,7 +209,7 @@ export class DirectClient {
                 const response = await generateMessageResponse({
                     runtime: runtime,
                     context,
-                    modelClass: ModelClass.SMALL,
+                    modelClass: ModelClass.MEDIUM,
                 });
 
                 // save response to memory

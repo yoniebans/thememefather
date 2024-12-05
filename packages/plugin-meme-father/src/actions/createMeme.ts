@@ -1,7 +1,17 @@
-import { Action, IAgentRuntime, Memory, State, composeContext, generateText, generateImage, ModelClass, elizaLogger } from '@ai16z/eliza';
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+import {
+    Action,
+    IAgentRuntime,
+    Memory,
+    State,
+    composeContext,
+    generateText,
+    generateImage,
+    ModelClass,
+    elizaLogger,
+} from "@ai16z/eliza";
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
 
 /**
  * Template for generating meme details in the agent's voice.
@@ -93,13 +103,9 @@ export async function saveHeuristImage(
 
 export const createMemeAction: Action = {
     name: "CREATE_MEME",
-    similes: [
-        "SAVE_MEME",
-        "MEME_THIS",
-        "MAKE_MEME",
-        "RECORD_MEME"
-    ],
-    description: "Save a meme-worthy conversation or idea to the meme leaderboard",
+    similes: ["SAVE_MEME", "MEME_THIS", "MAKE_MEME", "RECORD_MEME"],
+    description:
+        "Save a meme-worthy conversation or idea to the meme leaderboard",
     validate: async () => {
         return true;
     },
@@ -110,9 +116,12 @@ export const createMemeAction: Action = {
         _options: any,
         callback: (content: { text: string; error?: boolean }) => void
     ) => {
-        const memeManager = runtime.getMemoryManager('memes');
+        const memeManager = runtime.getMemoryManager("memes");
         if (!memeManager) {
-            callback({ text: "Failed to create meme: Meme manager not found", error: true });
+            callback({
+                text: "Failed to create meme: Meme manager not found",
+                error: true,
+            });
             return;
         }
 
@@ -134,14 +143,14 @@ export const createMemeAction: Action = {
         try {
             // Remove markdown code blocks and extract just the JSON
             const jsonString = memeDetails
-                .replace(/```json\n?/, '')  // Remove opening ```json
-                .replace(/```\n?/, '')      // Remove closing ```
-                .trim();                    // Remove any extra whitespace
+                .replace(/```json\n?/, "") // Remove opening ```json
+                .replace(/```\n?/, "") // Remove closing ```
+                .trim(); // Remove any extra whitespace
 
             parsedMemeDetails = JSON.parse(jsonString);
         } catch (e) {
-            console.error('Failed to parse meme details:', e);
-            console.log('Raw meme details:', memeDetails);
+            console.error("Failed to parse meme details:", e);
+            console.log("Raw meme details:", memeDetails);
             callback({ text: "Failed to parse meme details", error: true });
             return;
         }
@@ -158,7 +167,7 @@ export const createMemeAction: Action = {
             modelClass: ModelClass.SMALL,
         });
 
-        elizaLogger.info('imagePrompt', imagePrompt);
+        elizaLogger.info("imagePrompt", imagePrompt);
 
         const imageResult = await generateImage(
             {
@@ -172,7 +181,11 @@ export const createMemeAction: Action = {
 
         let filepath = "";
 
-        if (imageResult.success && imageResult.data && imageResult.data.length > 0) {
+        if (
+            imageResult.success &&
+            imageResult.data &&
+            imageResult.data.length > 0
+        ) {
             elizaLogger.log(
                 "Image generation successful, number of images:",
                 imageResult.data.length
@@ -188,7 +201,6 @@ export const createMemeAction: Action = {
                 : saveBase64Image(image, filename);
         }
 
-
         // // Create a copy of the memory object
         // const memoryWithoutEmbedding = { ...message };
 
@@ -196,7 +208,6 @@ export const createMemeAction: Action = {
         // delete memoryWithoutEmbedding.embedding;
 
         // elizaLogger.info('message', JSON.stringify(memoryWithoutEmbedding, null, 2));
-
 
         // const stringifyWithoutEmbeddings = (obj: any): string => {
         //     return JSON.stringify(obj, (key, value) => {
@@ -220,47 +231,51 @@ export const createMemeAction: Action = {
                 category: parsedMemeDetails.CATEGORY,
                 image_url: filepath ?? "",
                 votes: 0,
-                status: 'pending'
+                status: "pending",
             },
             userId: message.userId,
             roomId: runtime.agentId,
             agentId: runtime.agentId,
-            createdAt: Date.now()
+            createdAt: Date.now(),
         };
 
         await memeManager.createMemory(memeMemory, true);
 
         return {
             text: "That's hilarious! I've saved it as a meme. The community can vote on it in the leaderboard! 🎯",
-            action: "CREATE_MEME"
+            action: "CREATE_MEME",
         };
     },
     examples: [
         [
             {
                 user: "{{user1}}",
-                content: { text: "Web3 devs be like: I don't always test my code, but when I do, I do it in production" }
+                content: {
+                    text: "Web3 devs be like: I don't always test my code, but when I do, I do it in production",
+                },
             },
             {
-                user: "{{agentName}}",
+                user: "the_meme_father",
                 content: {
                     text: "😂 That's gold! I'm adding that to our meme collection - 'Web3 devs and their production testing adventures' 🚀",
-                    action: "CREATE_MEME"
-                }
-            }
+                    action: "CREATE_MEME",
+                },
+            },
         ],
         [
             {
                 user: "{{user1}}",
-                content: { text: "My portfolio is like a rollercoaster, except it only goes down" }
+                content: {
+                    text: "My portfolio is like a rollercoaster, except it only goes down",
+                },
             },
             {
-                user: "{{agentName}}",
+                user: "the_meme_father",
                 content: {
                     text: "That's too relatable! Adding it to the meme board - 'The only down-only rollercoaster: My crypto portfolio' 📉😅",
-                    action: "CREATE_MEME"
-                }
-            }
-        ]
-    ]
+                    action: "CREATE_MEME",
+                },
+            },
+        ],
+    ],
 };

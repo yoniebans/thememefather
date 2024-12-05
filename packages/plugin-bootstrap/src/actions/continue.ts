@@ -74,8 +74,20 @@ Analyze the last exchange and respond with YES or NO:
 export const continueAction: Action = {
     name: "CONTINUE",
     similes: ["ELABORATE", "KEEP_TALKING"],
-    description:
-        "ONLY use this action when the message necessitates a follow up. Do not use this action when the conversation is finished or the user does not wish to speak (use IGNORE instead). If the last message action was CONTINUE, and the user has not responded. Use sparingly.",
+    description: `ONLY use this action in scenarios where the current message explicitly sets up a need for immediate follow-up information, such as:
+1. Starting to explain a specific strategy ("Let me break down this chart pattern...")
+2. Beginning to reveal information ("I've noticed something interesting about recent market movements...")
+3. Setting up a multi-part explanation ("First, we need to look at the memetic indicators...")
+4. Starting to outline a specific plan ("Here's how we're going to play this moonshot...")
+
+DO NOT use if the message:
+- Asks for user input
+- Ends with a question
+- Makes a complete statement
+- Offers choices/options
+- Is a greeting or acknowledgment
+- Invites user engagement in any way
+`,
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         const recentMessagesData = await runtime.messageManager.getMemories({
             roomId: message.roomId,
@@ -190,7 +202,7 @@ export const continueAction: Action = {
         const response = await generateMessageResponse({
             runtime,
             context,
-            modelClass: ModelClass.SMALL,
+            modelClass: ModelClass.MEDIUM,
         });
 
         response.inReplyTo = message.id;
@@ -237,161 +249,40 @@ export const continueAction: Action = {
         [
             {
                 user: "{{user1}}",
-                content: {
-                    text: "we're planning a solo backpacking trip soon",
-                },
+                content: { text: "bro these charts looking weird af" },
             },
             {
                 user: "{{user2}}",
-                content: { text: "oh sick", action: "CONTINUE" },
-            },
-            {
-                user: "{{user2}}",
-                content: { text: "where are you going" },
-            },
-        ],
-
-        [
-            {
-                user: "{{user1}}",
                 content: {
-                    text: "i just got a guitar and started learning last month",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: { text: "maybe we can start a band soon haha" },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "i'm not very good yet, but i've been playing until my fingers hut",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: { text: "seriously it hurts to type" },
-            },
-        ],
-
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "I've been reflecting a lot on what happiness means to me lately",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "That it’s more about moments than things",
+                    text: "Let me tell you what I'm seeing in these patterns. The rare pepe index is showing some interesting divergence...",
                     action: "CONTINUE",
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "Like the best things that have ever happened were things that happened, or moments that I had with someone",
-                    action: "CONTINUE",
+                    text: "When meme volume spikes like this while sentiment stays low, it's historically been a sign of smart money accumulating",
+                    action: "NONE",
                 },
             },
         ],
-
         [
             {
                 user: "{{user1}}",
-                content: {
-                    text: "i found some incredible art today",
-                },
+                content: { text: "thinking about launching a memecoin" },
             },
             {
                 user: "{{user2}}",
-                content: { text: "real art or digital art" },
-            },
-            {
-                user: "{{user1}}",
                 content: {
-                    text: "real art",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "the pieces are just so insane looking, one sec, let me grab a link",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: { text: "DMed it to you" },
-            },
-        ],
-
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "the new exhibit downtown is rly cool, it's all about tribalism in online spaces",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "it really blew my mind, you gotta go",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: { text: "sure i'd go" },
-            },
-            {
-                user: "{{user1}}",
-                content: { text: "k i was thinking this weekend" },
-                action: "CONTINUE",
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "i'm free sunday, we could get a crew together",
-                },
-            },
-        ],
-
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "just finished the best anime i've ever seen",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "watched 40 hours of it in 2 days",
+                    text: "Ah, you want to learn the ancient art of tokenomics. Let me share the sacred knowledge passed down through generations of degens...",
                     action: "CONTINUE",
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "damn, u ok",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "surprisingly yes",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "just found out theres a sequel, gg",
+                    text: "The first rule of memetic token design is understanding your target community. The token must resonate with their collective consciousness",
+                    action: "NONE",
                 },
             },
         ],
@@ -399,253 +290,81 @@ export const continueAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "i'm thinking of adopting a pet soon",
+                    text: "need to understand what happened with that rugpull yesterday",
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "what kind of pet",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "i'm leaning towards a cat",
+                    text: "I've been analyzing the on-chain data, and I'm seeing a pattern that's all too familiar. The signs were there...",
                     action: "CONTINUE",
                 },
             },
             {
-                user: "{{user1}}",
+                user: "{{user2}}",
                 content: {
-                    text: "it'd be hard to take care of a dog in the city",
+                    text: "The wallet movements 48 hours before showed classic whale manipulation. Always watch the big holders",
+                    action: "NONE",
                 },
             },
         ],
         [
             {
                 user: "{{user1}}",
+                content: { text: "why do my trades always get front-run?" },
+            },
+            {
+                user: "{{user2}}",
                 content: {
-                    text: "i've been experimenting with vegan recipes lately",
+                    text: "Let me share a time-tested strategy from the family's playbook to avoid these MEV bots. First, we need to understand how they operate...",
+                    action: "CONTINUE",
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "no thanks",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "no seriously, its so dank",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "you gotta try some of my food when you come out",
+                    text: "They look for specific patterns in the mempool, so timing and size are everything in dodging them",
+                    action: "NONE",
                 },
             },
         ],
         [
             {
                 user: "{{user1}}",
+                content: { text: "explain to me what makes a good meme coin" },
+            },
+            {
+                user: "{{user2}}",
                 content: {
-                    text: "so i've been diving into photography as a new hobby",
+                    text: "The art of crafting a successful meme coin is like cooking the perfect pasta. Let me break down the essential ingredients...",
+                    action: "CONTINUE",
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "oh awesome, what do you enjoy taking photos of",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "mostly nature and urban landscapes",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "there's something peaceful about capturing the world through a lens",
+                    text: "A strong community, unique tokenomics, and perfect timing - these are the base elements that set up a moonshot",
+                    action: "NONE",
                 },
             },
         ],
         [
             {
                 user: "{{user1}}",
-                content: {
-                    text: "i've been getting back into indie music",
-                },
+                content: { text: "yo what's causing this pump?" },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "what have you been listening to",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "a bunch of random stuff i'd never heard before",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "i'll send you a playlist",
-                },
-            },
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "i used to live in the city",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "bad traffic, bad air quality, tons of homeless people, no thx",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "ok dood",
-                },
-            },
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "you kids today dont know the value of hard work",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "always on your phones",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "sure grandpa lets get you to bed",
-                },
-            },
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "hey fren r u ok",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "u look sad",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "im ok sweetie mommy just tired",
-                },
-            },
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "helo fr om mars",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "i com in pes",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "wat",
-                },
-            },
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Yeah no worries, I get it, I've been crazy busy too",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "What have you been up to",
+                    text: "I've been monitoring the telegram groups and checking my network of anon informants. A pattern is emerging...",
                     action: "CONTINUE",
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "Anything fun or just the usual",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Been working on a new FPS game actually",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Just toying around with something in three.js nothing serious",
-                },
-            },
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Oh no, what happened",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Did Mara leave you kek",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "wtf no, I got into an argument with my roommate",
-                    action: "CONTINUE",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "Living with people is just hard",
+                    text: "Three major whales have been accumulating quietly. They're known for having good timing",
+                    action: "NONE",
                 },
             },
         ],
