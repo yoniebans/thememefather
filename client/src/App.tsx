@@ -12,6 +12,7 @@ import { WalletProvider, useWallet } from "@/context/WalletContext";
 import Chat from "./Chat";
 import { useState } from "react";
 import { MemeModal } from "@/components/MemeModal";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Meme {
     id: string;
@@ -32,7 +33,7 @@ function AppContent() {
         queryKey: ["memes"],
         queryFn: async () => {
             const res = await fetch(
-                `/api/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/memes`
+                `${API_URL}/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/memes`
             );
             const data = await res.json();
             console.log("Received memes data:", data.memes);
@@ -67,7 +68,7 @@ function AppContent() {
                 {meme.url && (
                     <div className="w-16 h-16 flex-shrink-0">
                         <img
-                            src={meme.url}
+                            src={`${API_URL}${meme.url}`}
                             alt="Meme"
                             className="w-full h-full object-cover rounded-lg"
                             onError={(e) => {

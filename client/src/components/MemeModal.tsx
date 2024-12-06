@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface MemeModalProps {
     meme: {
@@ -49,11 +50,11 @@ export function MemeModal({ meme, onClose }: MemeModalProps) {
 
                         {/* Content */}
                         <div className="space-y-4">
-                            {/* Add Image */}
+                            {/* Update Image URL */}
                             {meme.url && (
                                 <div className="w-full">
                                     <img
-                                        src={meme.url}
+                                        src={`${API_URL}${meme.url}`}
                                         alt="busto"
                                         className="w-full rounded-lg object-cover"
                                     />
