@@ -13,6 +13,10 @@ export function createApiRouter(agents: Map<string, AgentRuntime>) {
     router.use(bodyParser.json());
     router.use(bodyParser.urlencoded({ extended: true }));
 
+    router.get("/health", (req, res) => {
+        res.set('Content-Type', 'text/plain').status(200).send('OK');
+     });
+
     router.get("/hello", (req, res) => {
         res.json({ message: "Hello World!" });
     });
