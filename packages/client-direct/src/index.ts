@@ -443,7 +443,7 @@ export class DirectClient {
                                 meme.createdAt?.toString() ||
                                 new Date().toISOString(),
                             ...(meme.content.image_url && {
-                                url: `/api/${runtime.agentId}/images/${(meme.content.image_url as string).split("/").pop()}`,
+                                url: `/images/${(meme.content.image_url as string).split("/").pop()}`,
                             }),
                             ...(meme.content.last_scored && {
                                 last_scored: meme.content.last_scored,
@@ -463,7 +463,7 @@ export class DirectClient {
 
         // Add an endpoint to serve the images
         this.app.get(
-            "/:agentId/images/:filename",
+            "/images/:filename",
             (req: express.Request, res: express.Response) => {
                 const filename = req.params.filename;
                 const imagePath = path.join(
