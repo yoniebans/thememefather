@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { useWallet } from "@/context/WalletContext";
@@ -10,12 +10,14 @@ type Attachment = {
     source: string;
     description?: string;
     title?: string;
+    text?: string;
 };
 
 type TextResponse = {
     text: string;
     user: string;
     attachments?: Attachment[];
+    action?: string;
 };
 
 const formatPublicKey = (key: string | null): string => {
@@ -29,11 +31,19 @@ export default function Chat() {
     const [messages, setMessages] = useState<TextResponse[]>([]);
     const [loadingDots, setLoadingDots] = useState("");
 
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         if (!connected) {
             setMessages([]);
         }
     }, [connected, publicKey]);
+
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [messages]);
 
     const mutation = useMutation({
         mutationFn: async (text: string) => {
@@ -89,7 +99,10 @@ export default function Chat() {
             <div className="bg-black/70 backdrop-blur-sm rounded-lg w-full h-full p-6 shadow-2xl border border-zinc-800/50 text-white font-mono">
                 <div className="flex flex-col h-full">
                     {/* Messages - now includes system message */}
-                    <div className="flex-1 overflow-y-auto">
+                    <div
+                        className="h-full overflow-y-auto overflow-x-hidden"
+                        ref={chatContainerRef}
+                    >
                         {/* System Message */}
                         <div className="mb-2">
                             <p>
@@ -101,20 +114,58 @@ export default function Chat() {
                             </p>
                         </div>
 
-                        {/* User Messages */}
-                        {messages.map((message, index) => (
-                            <div key={index} className="mb-2">
-                                <p>
-                                    <span className="text-[#EC4899]">
-                                        {message.user === publicKey
-                                            ? formatPublicKey(message.user)
-                                            : "meme_father"}{" "}
-                                        {">"}{" "}
-                                    </span>
-                                    {message.text}
-                                </p>
-                            </div>
-                        ))}
+                        {/* All Messages in Order */}
+                        {messages.map((message, index) => {
+                            const tickerText = message.attachments?.[0]?.text || message.text;
+                            const tickerMatch = tickerText?.match(/Meme Ticker: (\w+)/);
+                            const ticker = tickerMatch ? tickerMatch[1] : null;
+
+                            return (
+                                <div key={index}>
+                                    {/* Regular Message */}
+                                    <div className="mb-2">
+                                        <p>
+                                            <span className="text-[#EC4899]">
+                                                {message.user === publicKey
+                                                    ? formatPublicKey(message.user)
+                                                    : "meme_father"}{" "}
+                                                {">"}{" "}
+                                            </span>
+                                            {message.text}
+                                        </p>
+                                    </div>
+
+                                    {/* Meme Response if applicable */}
+                                    {message.action === "CREATE_MEME_RESPONSE" && (
+                                        <div className="mb-4 p-4 bg-black/20 border border-zinc-800/50 rounded-lg shadow-xl sparkle-animation">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-2 flex-1">
+                                                    <p className="text-lg font-bold text-[#EC4899]">
+                                                        {message.attachments?.[0]?.title || "New Meme"}
+                                                    </p>
+                                                    <p className="text-sm text-zinc-400">
+                                                        {message.attachments?.[0]?.description}
+                                                    </p>
+                                                    {ticker && (
+                                                        <p className="text-sm text-green-500">
+                                                            Ticker: ${ticker}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                {message.attachments?.[0]?.url && (
+                                                    <img
+                                                        src={`${API_URL}${message.attachments[0].url}`}
+                                                        alt={message.attachments[0].title}
+                                                        className="w-24 h-24 object-cover rounded-lg ml-4"
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+
                         {mutation.isPending && (
                             <p>
                                 <span className="text-[#EC4899]">

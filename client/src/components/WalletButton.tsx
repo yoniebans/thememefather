@@ -22,52 +22,52 @@ export function WalletButton() {
 
     useEffect(() => {
         console.log("[INIT] Starting Phantom wallet detection");
-
-        // Check if we're on HTTPS
-        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-            console.warn("[INIT] Wallet requires HTTPS connection");
-            return;
-        }
+        console.log("[INIT] window.solana:", window.solana);
+        console.log("[INIT] window.phantom:", window?.phantom);
 
         const checkForPhantom = () => {
             console.log("[CHECK] Checking for Phantom wallet");
-            // Check for both phantom.solana and window.solana
-            if (window?.phantom?.solana || window.solana) {
-                console.log("[CHECK] Found wallet provider");
+            if ("solana" in window) {
+                console.log("[CHECK] Found window.solana:", window.solana);
                 try {
-                    setPhantom(window.phantom?.solana || window.solana || null);
+                    setPhantom(window.solana || null);
                     console.log("[CHECK] Successfully set phantom state");
                 } catch (err) {
                     console.error("[CHECK] Error setting phantom state:", err);
                 }
                 return;
             }
-            // Retry for up to 10 seconds
-            if (Date.now() - startTime < 10000) {
-                console.log("[CHECK] Provider not found, will retry");
-                setTimeout(checkForPhantom, 250);
-            }
+            console.log("[CHECK] Phantom not found, will retry");
+            setTimeout(checkForPhantom, 1000);
         };
 
-        const startTime = Date.now();
         checkForPhantom();
     }, []);
 
     const connectWallet = async () => {
         console.log("[CONNECT] Starting wallet connection process");
         try {
-            // Try phantom first, then fallback to solana
-            const provider = window.phantom?.solana || window.solana || phantom;
-            console.log("[CONNECT] Using provider:", provider);
+            const solana = window.solana || phantom;
+            console.log("[CONNECT] Current solana object:", solana);
+            console.log("[CONNECT] Solana methods:", Object.keys(solana || {}));
 
-            if (!provider) {
+            if (!solana) {
                 console.log("[CONNECT] No wallet detected, redirecting to Phantom");
                 window.open("https://phantom.app/", "_blank");
                 return;
             }
 
+            console.log("[CONNECT] Checking connection status");
+            try {
+                // @ts-expect-error - Check if already connected
+                const isConnected = solana.isConnected;
+                console.log("[CONNECT] Current connection status:", isConnected);
+            } catch (err) {
+                console.log("[CONNECT] Error checking connection status:", err);
+            }
+
             console.log("[CONNECT] Initiating connect() call");
-            const response = await provider.connect();
+            const response = await solana.connect();
             console.log("[CONNECT] Connect response:", response);
 
             const key = response.publicKey.toString();

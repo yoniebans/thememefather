@@ -228,11 +228,13 @@ export class DirectClient {
                     return;
                 }
 
+                await runtime.updateRecentMessageState(state);
+
                 let message = null as Content | null;
 
                 await runtime.evaluate(memory, state);
 
-                const _result = await runtime.processActions(
+                await runtime.processActions(
                     memory,
                     [responseMessage],
                     state,
@@ -242,27 +244,13 @@ export class DirectClient {
                     }
                 );
 
-                // Transform local file paths to API URLs in the response
-                if (response.attachments) {
-                    elizaLogger.log("=== Response Attachments ===");
-                    response.attachments = response.attachments.map(
-                        (attachment) => ({
-                            ...attachment,
-                            url: `/api/${runtime.agentId}/images/${attachment.url.split("/").pop()}`,
-                        })
-                    );
-                    elizaLogger.log(
-                        JSON.stringify(response.attachments, null, 2)
-                    );
-                }
-
                 // Also transform attachments in the message if it exists
                 if (message?.attachments) {
                     elizaLogger.log("=== Message Attachments ===");
                     message.attachments = message.attachments.map(
                         (attachment) => ({
                             ...attachment,
-                            url: `/api/${runtime.agentId}/images/${attachment.url.split("/").pop()}`,
+                            url: `/images/${attachment.url.split("/").pop()}`,
                         })
                     );
                     elizaLogger.log(

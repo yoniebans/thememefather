@@ -34,6 +34,29 @@ import {
     SearchResponse,
 } from "./types.ts";
 import { fal } from "@fal-ai/client";
+import { Langfuse } from "langfuse";
+import { stringToUuid } from "./uuid";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const langfuse = new Langfuse({
+    secretKey: process.env.LANGFUSE_SECRET_KEY,
+    publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+    baseUrl: "https://cloud.langfuse.com",
+});
+
+// Helper function to create consistent traces
+function createLangfuseTrace(context: string, name: string) {
+    return langfuse.trace({
+        id: stringToUuid(`${Date.now()}-${context.slice(0, 10)}`),
+        name,
+        metadata: {
+            timestamp: new Date().toISOString(),
+            contextLength: context.length,
+        },
+    });
+}
 
 /**
  * Send a message to the model for a text generateText - receive a string back and parse how you'd like
@@ -53,19 +76,44 @@ export async function generateText({
     context,
     modelClass,
     stop,
+    parent,
 }: {
     runtime: IAgentRuntime;
     context: string;
     modelClass: string;
     stop?: string[];
+    parent?: import("langfuse").LangfuseSpanClient;
 }): Promise<string> {
     if (!context) {
         console.error("generateText context is empty");
         return "";
     }
 
-    elizaLogger.log("Generating text...");
+    // Create trace if no parent provided
+    const trace = !parent
+        ? createLangfuseTrace(context, "text-generation")
+        : null;
 
+    // Create generation with consistent metadata
+    const generation = (parent || trace)?.generation({
+        name: "text_generation",
+        model: models[runtime.modelProvider].model[modelClass],
+        modelParameters: {
+            ...models[runtime.modelProvider].settings,
+            stop: stop || models[runtime.modelProvider].settings.stop,
+            provider: runtime.modelProvider,
+            modelClass,
+            endpoint: models[runtime.modelProvider].endpoint,
+        },
+        input: context,
+        metadata: {
+            prompt: context, // Store prompt in metadata for easier access
+            maxTokens: models[runtime.modelProvider].settings.maxInputTokens,
+            temperature: models[runtime.modelProvider].settings.temperature,
+        },
+    });
+
+    elizaLogger.log("Generating text...");
     elizaLogger.info("Generating text with options:", {
         modelProvider: runtime.modelProvider,
         model: modelClass,
@@ -437,9 +485,38 @@ export async function generateText({
                 throw new Error(errorMessage);
             }
         }
+
+        // Track completion with rich metadata
+        generation?.end({
+            output: response,
+            usage: {
+                promptTokens: Buffer.byteLength(context, "utf8"),
+                completionTokens: Buffer.byteLength(response, "utf8"),
+                totalTokens:
+                    Buffer.byteLength(context, "utf8") +
+                    Buffer.byteLength(response, "utf8"),
+                unit: "TOKENS",
+            },
+            metadata: {
+                completionTime: Date.now(),
+                provider: runtime.modelProvider,
+                success: true,
+            },
+        });
         return response;
     } catch (error) {
         elizaLogger.error("Error in generateText:", error);
+        generation?.end({
+            output: error instanceof Error ? error.message : String(error),
+            level: "ERROR",
+            statusMessage: error instanceof Error ? error.stack : String(error),
+            metadata: {
+                completionTime: Date.now(),
+                provider: runtime.modelProvider,
+                success: false,
+                errorType: error.constructor.name,
+            },
+        });
         throw error;
     }
 }
@@ -599,6 +676,19 @@ export async function generateTrueOrFalse({
         ])
     ) as string[];
 
+    // Create parent trace for the full operation
+    const trace = createLangfuseTrace(context, "true-false-evaluation");
+
+    // Create span for the evaluation process including retries
+    const span = trace.span({
+        name: "evaluate-boolean",
+        metadata: {
+            operationType: "boolean-parsing",
+            context,
+            initialRetryDelay: retryDelay,
+        },
+    });
+
     while (true) {
         try {
             const response = await generateText({
@@ -610,9 +700,36 @@ export async function generateTrueOrFalse({
 
             const parsedResponse = parseBooleanFromText(response.trim());
             if (parsedResponse !== null) {
+                span.end({
+                    output: {
+                        rawResponse: response,
+                        parsedValue: parsedResponse,
+                        success: true,
+                        totalRetries: (retryDelay - 1000) / 1000, // Calculate number of retries from delay
+                    },
+                });
                 return parsedResponse;
             }
+
+            // Log failed parsing attempt
+            span.event({
+                name: "parsing_failed",
+                metadata: {
+                    rawResponse: response,
+                    nextRetryDelay: retryDelay * 2,
+                },
+            });
         } catch (error) {
+            // Log error but continue retry loop
+            span.event({
+                name: "generation_error",
+                level: "ERROR",
+                metadata: {
+                    error:
+                        error instanceof Error ? error.message : String(error),
+                    nextRetryDelay: retryDelay * 2,
+                },
+            });
             elizaLogger.error("Error in generateTrueOrFalse:", error);
         }
 
@@ -682,15 +799,28 @@ export async function generateObject({
     context: string;
     modelClass: string;
 }): Promise<any> {
+    elizaLogger.info("generating object");
     if (!context) {
         elizaLogger.error("generateObject context is empty");
         return null;
     }
     let retryDelay = 1000;
 
+    // Create parent trace for the full operation
+    const trace = createLangfuseTrace(context, "object-generation");
+
+    // Create span for the generation process including retries
+    const span = trace.span({
+        name: "generate-object",
+        metadata: {
+            operationType: "json-parsing",
+            context,
+            initialRetryDelay: retryDelay,
+        },
+    });
+
     while (true) {
         try {
-            // this is slightly different than generateObjectArray, in that we parse object, not object array
             const response = await generateText({
                 runtime,
                 context,
@@ -698,9 +828,37 @@ export async function generateObject({
             });
             const parsedResponse = parseJSONObjectFromText(response);
             if (parsedResponse) {
+                // Log successful parsing
+                span.end({
+                    output: {
+                        rawResponse: response,
+                        parsedValue: parsedResponse,
+                        success: true,
+                        totalRetries: (retryDelay - 1000) / 1000, // Calculate number of retries from delay
+                    },
+                });
                 return parsedResponse;
             }
+
+            // Log failed parsing attempt
+            span.event({
+                name: "parsing_failed",
+                metadata: {
+                    rawResponse: response,
+                    nextRetryDelay: retryDelay * 2,
+                },
+            });
         } catch (error) {
+            // Log error but continue retry loop
+            span.event({
+                name: "generation_error",
+                level: "ERROR",
+                metadata: {
+                    error:
+                        error instanceof Error ? error.message : String(error),
+                    nextRetryDelay: retryDelay * 2,
+                },
+            });
             elizaLogger.error("Error in generateObject:", error);
         }
 

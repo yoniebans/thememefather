@@ -22,21 +22,8 @@ import {
     stringToUuid,
     validateCharacterConfig,
 } from "@ai16z/eliza";
-import { zgPlugin } from "@ai16z/plugin-0g";
-import { goatPlugin } from "@ai16z/plugin-goat";
 import { bootstrapPlugin } from "@ai16z/plugin-bootstrap";
-// import { buttplugPlugin } from "@ai16z/plugin-buttplug";
-import {
-    coinbaseCommercePlugin,
-    coinbaseMassPaymentsPlugin,
-    tradePlugin,
-} from "@ai16z/plugin-coinbase";
-import { confluxPlugin } from "@ai16z/plugin-conflux";
-import { imageGenerationPlugin } from "@ai16z/plugin-image-generation";
-import { evmPlugin } from "@ai16z/plugin-evm";
 import { createNodePlugin } from "@ai16z/plugin-node";
-import { solanaPlugin } from "@ai16z/plugin-solana";
-import { teePlugin } from "@ai16z/plugin-tee";
 import { memeFatherPlugin } from "@ai16z/plugin-meme-father";
 import Database from "better-sqlite3";
 import fs from "fs";
@@ -100,7 +87,6 @@ export async function loadCharacters(
         for (const characterPath of characterPaths) {
             let content = null;
             let resolvedPath = "";
-
 
             // Try different path resolutions in order
             const pathsToTry = [
@@ -363,41 +349,9 @@ export function createAgent(
         modelProvider: character.modelProvider,
         evaluators: [],
         character,
-        plugins: [
-            bootstrapPlugin,
-            getSecret(character, "CONFLUX_CORE_PRIVATE_KEY")
-                ? confluxPlugin
-                : null,
-            nodePlugin,
-            getSecret(character, "SOLANA_PUBLIC_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
-                ? solanaPlugin
-                : null,
-            getSecret(character, "EVM_PRIVATE_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
-                ? evmPlugin
-                : null,
-            getSecret(character, "ZEROG_PRIVATE_KEY") ? zgPlugin : null,
-            getSecret(character, "COINBASE_COMMERCE_KEY")
-                ? coinbaseCommercePlugin
-                : null,
-            getSecret(character, "BUTTPLUG_API_KEY") ? buttplugPlugin : null,
-            getSecret(character, "WALLET_SECRET_SALT") ? teePlugin : null,
-            memeFatherPlugin,
-            getSecret(character, "FAL_API_KEY") ||
-            getSecret(character, "OPENAI_API_KEY") ||
-            getSecret(character, "HEURIST_API_KEY")
-                ? imageGenerationPlugin
-                : null,
-            ...(getSecret(character, "COINBASE_API_KEY") &&
-            getSecret(character, "COINBASE_PRIVATE_KEY")
-                ? [coinbaseMassPaymentsPlugin, tradePlugin]
-                : []),
-            getSecret(character, "WALLET_SECRET_SALT") ? teePlugin : null,
-            getSecret(character, "ALCHEMY_API_KEY") ? goatPlugin : null,
-        ].filter(Boolean),
+        plugins: [bootstrapPlugin, nodePlugin, memeFatherPlugin].filter(
+            Boolean
+        ),
         providers: [],
         actions: [],
         services: [],

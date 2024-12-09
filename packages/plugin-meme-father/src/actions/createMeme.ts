@@ -4,10 +4,14 @@ import {
     Memory,
     State,
     composeContext,
-    generateText,
     generateImage,
     ModelClass,
     elizaLogger,
+    generateObject,
+    formatMessages,
+    HandlerCallback,
+    Content,
+    Media,
 } from "@ai16z/eliza";
 import fs from "fs";
 import path from "path";
@@ -18,39 +22,77 @@ import crypto from "crypto";
  * Uses context to generate appropriate ticker and description.
  */
 const memePromptTemplate = `
-About {{agentName}}:
-{{bio}}
-{{lore}}
+Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined.
 
-{{recentMessages}}
+Example response:
+\`\`\`json
+{
+    "name": "the meme father",
+    "ticker": "FMLY",
+    "description": "digital don of the memetic realm | running the largest degen family in crypto | bull run architect | fort knox of meme liquidity | vires in memeris 🤌",
+    "image_description": "a Pepe frog wearing a black fur coat jacket, diamond chain and bracelet, standing in front of a Lambo dealership."
+}
+\`\`\`
 
-# Task: Create a meme token based on the conversation
-Analyze the conversation and create a meme token with the following format:
-* TICKER: A short, memorable ticker symbol (3-5 characters)
-* DESCRIPTION: A concise, witty description of the meme (max 140 characters)
-* CATEGORY: The type of meme (e.g., CRYPTO, TECH, CULTURE, POLITICS)
+{{last10Messages}}
 
-Format the response as a JSON object with these fields. Keep it brief and meme-worthy.`;
+Given the recent messages, extract or generate (come up with if not included) the following information about the requested token creation:
+- Token name
+- Token ticker
+- Token description
+- Token image description
+
+Respond with a JSON markdown block containing only the extracted values.`;
 
 const imagePromptTemplate = `
-Create a meme image for:
-TICKER: {{ticker}}
-DESCRIPTION: {{description}}
-CATEGORY: {{category}}
+ticker: {{ticker}}, {{image_description}}`;
 
-Generate a concise, meme-style image prompt that:
-1. Captures the essence of the meme
-2. Uses visual meme conventions
-3. Has clear foreground and background elements
+const shouldCreateMemeTemplate = `
+Respond with a JSON markdown block containing only the following values:
+- approved: boolean indicating if the meme concept should be created
+- reason: string explaining why (for both approvals and rejections)
 
-Keep it under 100 words and focus on visual elements only.`;
-
-// Add this interface before the createMemeAction
-interface MemeDetails {
-    TICKER: string;
-    DESCRIPTION: string;
-    CATEGORY: string;
+Example responses:
+\`\`\`json
+{
+    "approved": false,
+    "reason": "[TOO_SIMILAR] Concept overlaps with pending meme 'The Hodl Monk' which already captures meditation through volatility"
 }
+\`\`\`
+
+\`\`\`json
+{
+    "approved": true,
+    "reason": "Novel perspective on MEV with clear visual potential and cultural resonance, distinct from existing memes"
+}
+\`\`\`
+
+# Recent Pending Memes
+{{pendingMemes}}
+
+# New Meme
+ticker: {{meme_ticker}}
+description: {{meme_description}}
+name: {{meme_name}}
+
+# Evaluation Criteria
+1. Novelty Check:
+- Is this concept substantially different from existing pending memes?
+- Does it introduce a new perspective or insight?
+
+2. Cultural Relevance:
+- Does it capture a deep truth about crypto/web3 culture?
+- Is the symbolism relatable to the target audience?
+
+3. Visual Potential:
+- Can it be represented in a clear, distinctive way?
+- Would it be immediately recognizable?
+
+4. Virality Factors:
+- Does it have emotional resonance?
+- Is it easily shareable and understandable?
+
+Analyze the proposed meme concept against the above criteria and respond with a JSON markdown block containing the approval status and reason.`;
 
 export function saveBase64Image(base64Data: string, filename: string): string {
     // Create generatedImages directory if it doesn't exist
@@ -105,7 +147,7 @@ export const createMemeAction: Action = {
     name: "CREATE_MEME",
     similes: ["SAVE_MEME", "MEME_THIS", "MAKE_MEME", "RECORD_MEME"],
     description:
-        "Save a meme-worthy conversation or idea to the meme leaderboard",
+        "Save groundbreaking meme concepts that pass novelty and quality validation checks. Each meme must bring something new to the crypto zeitgeist - no recycled concepts or basic observations. Make sure the conversation has reached a point where it's clear that the next step is to create a meme. Use sparingly.",
     validate: async () => {
         return true;
     },
@@ -114,7 +156,7 @@ export const createMemeAction: Action = {
         message: Memory,
         state: State,
         _options: any,
-        callback: (content: { text: string; error?: boolean }) => void
+        callback: HandlerCallback
     ) => {
         const memeManager = runtime.getMemoryManager("memes");
         if (!memeManager) {
@@ -125,6 +167,18 @@ export const createMemeAction: Action = {
             return;
         }
 
+        // Just take the last 10 messages
+        const messagesOfInterest = state.recentMessagesData.slice(-9);
+
+        messagesOfInterest.push(message);
+        messagesOfInterest.reverse();
+
+        // Format just the messages we're interested in
+        state.last10Messages = formatMessages({
+            messages: messagesOfInterest,
+            actors: state.actorsData,
+        });
+
         // Generate meme details using the template and context
         const memeContext = composeContext({
             state,
@@ -132,46 +186,75 @@ export const createMemeAction: Action = {
         });
 
         // Generate the meme details
-        const memeDetails = await generateText({
+        const meme = await generateObject({
             runtime,
             context: memeContext,
-            modelClass: ModelClass.SMALL,
+            modelClass: ModelClass.LARGE,
         });
 
-        // Parse the generated meme details
-        let parsedMemeDetails;
-        try {
-            // Remove markdown code blocks and extract just the JSON
-            const jsonString = memeDetails
-                .replace(/```json\n?/, "") // Remove opening ```json
-                .replace(/```\n?/, "") // Remove closing ```
-                .trim(); // Remove any extra whitespace
+        elizaLogger.info("meme", meme);
 
-            parsedMemeDetails = JSON.parse(jsonString);
-        } catch (e) {
-            console.error("Failed to parse meme details:", e);
-            console.log("Raw meme details:", memeDetails);
-            callback({ text: "Failed to parse meme details", error: true });
+        state.meme_ticker = meme.ticker;
+        state.meme_description = meme.description;
+        state.meme_name = meme.name;
+
+        // Fetch pending memes
+        const pendingMemes = await memeManager.getMemories({
+            roomId: runtime.agentId,
+            count: 50,
+            unique: true,
+        });
+
+        // Filter and format pending memes
+        const formattedPendingMemes = pendingMemes
+            .filter((meme) => meme.content.status === "pending")
+            .sort(
+                (a, b) =>
+                    Number(b.content.votes || 0) - Number(a.content.votes || 0)
+            )
+            .map(
+                (meme) =>
+                    `memetic power: ${meme.content.votes || 0}, ticker: ${meme.content.ticker}, name: ${meme.content.name}, description: ${meme.content.description}`
+            )
+            .join("\n");
+
+        state.pendingMemes = `# Pending Memes\n${formattedPendingMemes}`;
+
+        const shouldCreateMemeContext = composeContext({
+            state,
+            template: shouldCreateMemeTemplate,
+        });
+
+        const shouldCreateMeme = await generateObject({
+            runtime,
+            context: shouldCreateMemeContext,
+            modelClass: ModelClass.MEDIUM,
+        });
+
+        elizaLogger.info("shouldCreateMeme", shouldCreateMeme);
+
+        if (!shouldCreateMeme.approved) {
+            callback({
+                text: shouldCreateMeme.reason,
+                error: true,
+            });
             return;
         }
 
-        const imagePromptContext = composeContext({
-            state: { ...state, parsedMemeDetails },
+        const imagePrompt = composeContext({
+            state: {
+                ...state,
+                ticker: meme.ticker,
+                image_description: meme.image_description,
+            },
             template: imagePromptTemplate,
         });
 
-        // Generate the meme details
-        const imagePrompt = await generateText({
-            runtime,
-            context: imagePromptContext,
-            modelClass: ModelClass.SMALL,
-        });
-
-        elizaLogger.info("imagePrompt", imagePrompt);
-
         const imageResult = await generateImage(
             {
-                prompt: imagePrompt,
+                prompt:
+                    imagePrompt +
+                    ". Minimalistic 2D flat internet meme cartoon style with flat colors (no shading or gradients) and thick black outlines, maintaining a humorous and simplistic aesthetic.",
                 width: 256,
                 height: 256,
                 count: 1,
@@ -201,38 +284,20 @@ export const createMemeAction: Action = {
                 : saveBase64Image(image, filename);
         }
 
-        // // Create a copy of the memory object
-        // const memoryWithoutEmbedding = { ...message };
-
-        // // Delete the embedding field if it exists
-        // delete memoryWithoutEmbedding.embedding;
-
-        // elizaLogger.info('message', JSON.stringify(memoryWithoutEmbedding, null, 2));
-
-        // const stringifyWithoutEmbeddings = (obj: any): string => {
-        //     return JSON.stringify(obj, (key, value) => {
-        //         // If this is a Memory object (checking for typical Memory properties)
-        //         if (value && typeof value === 'object' && 'content' in value && 'userId' in value) {
-        //             // Skip Memory objects entirely
-        //             return undefined;
-        //         }
-        //         return value;
-        //     }, 2);
-        // };
-
-        // elizaLogger.info('state', stringifyWithoutEmbeddings(state));
+        const memeDetails = {
+            text: `Meme Ticker: ${meme.ticker} - ${meme.description}`,
+            ticker: meme.ticker,
+            description: meme.description,
+            image_description: meme.image_description,
+            name: meme.name,
+            image_url: filepath ?? "",
+            votes: 0,
+            status: "pending",
+        };
 
         const memeMemory: Memory = {
             id: crypto.randomUUID(),
-            content: {
-                text: `Meme Ticker: ${parsedMemeDetails.TICKER} - ${parsedMemeDetails.DESCRIPTION}`,
-                ticker: parsedMemeDetails.TICKER,
-                description: parsedMemeDetails.DESCRIPTION,
-                category: parsedMemeDetails.CATEGORY,
-                image_url: filepath ?? "",
-                votes: 0,
-                status: "pending",
-            },
+            content: memeDetails,
             userId: message.userId,
             roomId: runtime.agentId,
             agentId: runtime.agentId,
@@ -241,10 +306,25 @@ export const createMemeAction: Action = {
 
         await memeManager.createMemory(memeMemory, true);
 
-        return {
-            text: "That's hilarious! I've saved it as a meme. The community can vote on it in the leaderboard! 🎯",
-            action: "CREATE_MEME",
+        const data: Content = {
+            text: "Meme idea minted! ...",
+            action: "CREATE_MEME_RESPONSE",
+            source: message.content.source,
+            attachments: [
+                {
+                    id: memeMemory.id,
+                    url: memeMemory.content.image_url,
+                    title: memeMemory.content.name,
+                    source: "the_meme_father",
+                    description: memeMemory.content.description,
+                    text: memeMemory.content.text,
+                } as Media,
+            ],
         };
+
+        callback(data);
+
+        return;
     },
     examples: [
         [
