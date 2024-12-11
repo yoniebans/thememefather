@@ -9,7 +9,15 @@ import { REST, Routes } from "discord.js";
 export function createApiRouter(agents: Map<string, AgentRuntime>) {
     const router = express.Router();
 
-    router.use(cors());
+    router.use(cors({
+        origin: [
+            'https://thememefather.com',
+            'http://localhost:5173' // for local development
+        ],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    }));
+
     router.use(bodyParser.json());
     router.use(bodyParser.urlencoded({ extended: true }));
 
