@@ -41,17 +41,18 @@
 }
 
 @keyframes scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
 }
 
 .animate-scroll {
-  animation: scroll 20s linear infinite;
-  min-width: 100%;
+    display: flex;
+    animation: scroll 30s linear infinite;
+    width: max-content;
 }
 
 html, body {
@@ -100,4 +101,17 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
     background-color: #FF6FB5; /* Slightly lighter pink on hover */
+}
+
+@keyframes scroll-left {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-100%);
+    }
+}
+
+.animate-scroll-left {
+    animation: scroll-left 40s linear infinite;
 }

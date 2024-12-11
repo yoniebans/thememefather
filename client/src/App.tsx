@@ -12,6 +12,7 @@ import { WalletProvider, useWallet } from "@/context/WalletContext";
 import Chat from "./Chat";
 import { useState } from "react";
 import { MemeModal } from "@/components/MemeModal";
+import { ScrollingBanner } from '@/components/ScrollingBanner';
 const API_URL = import.meta.env.VITE_API_URL;
 import type { Meme } from "@/types/meme";
 
@@ -135,31 +136,7 @@ function AppContent() {
                 </div>
 
                 {/* Banner */}
-                <div className="w-full overflow-hidden py-4 bg-black/10">
-                    <div className="flex whitespace-nowrap animate-scroll">
-                        {/* Single set that gets duplicated by CSS */}
-                        {memesData
-                            ? [...Array(20)].map((_, index) => (
-                                  <span
-                                      key={index}
-                                      className="text-2xl font-bold mx-8 text-[#EC4899] [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]"
-                                  >
-                                      {memesData[index % memesData.length]
-                                          ?.ticker || "$MEMEFATHER"}
-                                  </span>
-                              ))
-                            : Array(20)
-                                  .fill("$MEMEFATHER")
-                                  .map((text, index) => (
-                                      <span
-                                          key={index}
-                                          className="text-2xl font-bold mx-8 text-[#EC4899] [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000]"
-                                      >
-                                          {text}
-                                      </span>
-                                  ))}
-                    </div>
-                </div>
+                <ScrollingBanner memes={memesData} isLoading={memesLoading} />
             </div>
 
             {/* The Plug Section */}
