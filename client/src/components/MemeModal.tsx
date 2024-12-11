@@ -1,92 +1,257 @@
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-const API_URL = import.meta.env.VITE_API_URL;
+import { useState } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Card } from "./ui/card";
+import { Button } from "./ui/button";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+interface RankingDetails {
+    total: number;
+    virality: number;
+    relevance: number;
+    uniqueness: number;
+    longevity: number;
+    reasoning: string;
+    timestamp: number;
+    marketContext: string | {
+        fearGreedIndex: string | number;
+        volumeMetric: string | number;
+        overallSentiment: string;
+    };
+    history: Array<{
+        total: number;
+        virality: number;
+        relevance: number;
+        uniqueness: number;
+        longevity: number;
+        timestamp: number;
+    }>;
+}
+
+interface Meme {
+    id: string;
+    ticker: string;
+    description: string;
+    votes: number;
+    author: string;
+    timestamp: string;
+    url?: string;
+    ranking_details?: RankingDetails;
+}
 
 interface MemeModalProps {
-    meme: {
-        id: string;
-        ticker: string;
-        description: string;
-        votes: number;
-        author: string;
-        timestamp: string;
-        last_scored?: string;
-        url?: string;
-    };
+    meme: Meme;
     onClose: () => void;
 }
 
 export function MemeModal({ meme, onClose }: MemeModalProps) {
+    const [showHistory, setShowHistory] = useState(false);
+    const formatScore = (score: number) => score.toFixed(1);
+
+    const CustomTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="bg-black/90 border border-zinc-800 p-3 rounded-lg shadow-xl">
+                    <p className="text-zinc-400 text-xs mb-2">
+                        {new Date(parseInt(label)).toLocaleString()}
+                    </p>
+                    {payload.map((entry: any) => (
+                        <p key={entry.name} className="text-sm">
+                            <span className="text-zinc-500">{entry.name}: </span>
+                            <span style={{ color: entry.stroke }}>{formatScore(entry.value)}</span>
+                        </p>
+                    ))}
+                    <div className="mt-1 pt-1 border-t border-zinc-800">
+                        <p className="text-sm">
+                            <span className="text-zinc-500">Total: </span>
+                            <span className="text-[#EC4899]">{formatScore(payload[0].payload.total)}</span>
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
-            />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="relative flex">
+                {/* Sliding history panel */}
+                <div
+                    className={`absolute top-0 -right-96 h-full w-96 transition-transform duration-300 z-0 ${
+                        showHistory ? 'translate-x-0' : 'translate-x-[-100%]'
+                    }`}
+                >
+                    <Card className="bg-black/90 border border-zinc-800 shadow-2xl text-white font-mono h-full">
+                        <div className="p-6 space-y-4 h-full overflow-y-auto">
+                            <div className="text-sm text-zinc-400">
+                                <p className="font-bold mb-2">Latest Analysis:</p>
+                                <p>{meme.ranking_details?.reasoning}</p>
+                            </div>
 
-            <div className="relative z-50 w-full max-w-2xl mx-4">
-                <Card className="bg-black/80 backdrop-blur-sm border border-zinc-800/50 shadow-2xl text-white font-mono">
-                    <div className="p-6 space-y-4">
-                        {/* Header */}
-                        <div className="flex justify-between items-start">
                             <div>
-                                <h2 className="text-2xl font-bold text-[#EC4899]">
-                                    {meme.ticker}
-                                </h2>
-                                <p className="text-sm text-zinc-400">
-                                    by {meme.author}
-                                </p>
+                                <p className="font-bold mb-2 text-sm text-zinc-400">Memetic Power Trend</p>
+                                <div className="h-48 w-full flex justify-center">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart
+                                            data={[...meme.ranking_details!.history].sort((a, b) => a.timestamp - b.timestamp)}
+                                            margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                                        >
+                                            <XAxis
+                                                dataKey="timestamp"
+                                                tickFormatter={(timestamp) => new Date(timestamp).toLocaleDateString()}
+                                                stroke="#666"
+                                                fontSize={12}
+                                                axisLine={false}
+                                                tickLine={false}
+                                                dy={10}
+                                                angle={-30}
+                                                textAnchor="end"
+                                                height={60}
+                                            />
+                                            <YAxis
+                                                domain={[0, 25]}
+                                                ticks={[0, 5, 10, 15, 20, 25]}
+                                                stroke="#666"
+                                                fontSize={12}
+                                                axisLine={false}
+                                                tickLine={false}
+                                                dx={-10}
+                                            />
+                                            <Tooltip content={<CustomTooltip />} />
+                                            <Line
+                                                name="Virality"
+                                                type="monotone"
+                                                dataKey="virality"
+                                                stroke="#3B82F6"
+                                                strokeWidth={2}
+                                                dot={{ fill: '#3B82F6' }}
+                                            />
+                                            <Line
+                                                name="Relevance"
+                                                type="monotone"
+                                                dataKey="relevance"
+                                                stroke="#10B981"
+                                                strokeWidth={2}
+                                                dot={{ fill: '#10B981' }}
+                                            />
+                                            <Line
+                                                name="Uniqueness"
+                                                type="monotone"
+                                                dataKey="uniqueness"
+                                                stroke="#F59E0B"
+                                                strokeWidth={2}
+                                                dot={{ fill: '#F59E0B' }}
+                                            />
+                                            <Line
+                                                name="Longevity"
+                                                type="monotone"
+                                                dataKey="longevity"
+                                                stroke="#8B5CF6"
+                                                strokeWidth={2}
+                                                dot={{ fill: '#8B5CF6' }}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={onClose}
-                                className="text-zinc-400 hover:text-white"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
+
+                            <div className="text-sm text-zinc-400">
+                                <p className="font-bold mb-2">Market Sentiment:</p>
+                                {typeof meme.ranking_details?.marketContext === 'string' ? (
+                                    <p>{meme.ranking_details.marketContext}</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <p>Fear & Greed Index: {(meme.ranking_details?.marketContext as any).fearGreedIndex}</p>
+                                        <p>Volume Metric: {(meme.ranking_details?.marketContext as any).volumeMetric}</p>
+                                        <p>Overall Sentiment: {(meme.ranking_details?.marketContext as any).overallSentiment}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                {/* Main modal - higher z-index */}
+                <Card className="bg-black/90 border border-zinc-800 shadow-2xl text-white font-mono w-full max-w-2xl relative z-10">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-2 top-2"
+                        onClick={onClose}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+
+                    <div className="p-6 space-y-4">
+                        {/* Main content */}
+                        <div className="space-y-2">
+                            <h3 className="text-2xl font-bold">
+                                <span className="text-green-500">
+                                    {meme.votes.toString().padStart(3, '0')}
+                                </span>
+                                <span className="text-zinc-500 mx-2">|</span>
+                                <span className="text-[#EC4899]">{meme.ticker}</span>
+                            </h3>
+                            <p className="text-zinc-400">{meme.description}</p>
+                            <p className="text-sm text-zinc-500">by {meme.author}</p>
+                            <p className="text-xs text-zinc-600">
+                                {new Date(parseInt(meme.timestamp)).toLocaleDateString()}{" "}
+                                {new Date(parseInt(meme.timestamp)).toLocaleTimeString()}
+                            </p>
                         </div>
 
-                        {/* Content */}
-                        <div className="space-y-4">
-                            {/* Update Image URL */}
-                            {meme.url && (
-                                <div className="w-full">
-                                    <img
-                                        src={`${API_URL}${meme.url}`}
-                                        alt="busto"
-                                        className="w-full rounded-lg object-cover"
-                                    />
-                                </div>
-                            )}
-
-                            <div className="bg-black/50 p-4 rounded-lg">
-                                <p className="text-zinc-200">
-                                    {meme.description}
-                                </p>
+                        {/* Image if exists */}
+                        {meme.url && (
+                            <div className="relative w-full">
+                                <img
+                                    src={`${import.meta.env.VITE_API_URL}${meme.url}`}
+                                    alt="Meme"
+                                    className="w-full h-auto rounded-lg"
+                                />
+                                <Button
+                                    variant="ghost"
+                                    className={`absolute right-0 top-0 h-full w-8
+                                        ${showHistory
+                                            ? 'bg-[#EC4899]/90 hover:bg-[#EC4899]'
+                                            : 'bg-[#EC4899]/30 hover:bg-[#EC4899]/50'
+                                        }`}
+                                    onClick={() => setShowHistory(!showHistory)}
+                                >
+                                    <span className="text-white text-xs rotate-180" style={{ writingMode: 'vertical-rl' }}>
+                                        memetic power log
+                                    </span>
+                                </Button>
                             </div>
+                        )}
 
-                            <div className="flex justify-between items-start">
-                                <div className="flex flex-col gap-1 text-sm">
-                                    <p className="text-zinc-500">
-                                        created: {new Date(parseInt(meme.timestamp)).toLocaleDateString()}{" "}
-                                        {new Date(parseInt(meme.timestamp)).toLocaleTimeString()}{" "}
-                                        UTC
-                                    </p>
-                                    <p className="text-zinc-500">
-                                        memetic scan: {meme.last_scored ? (
-                                            `${new Date(parseInt(meme.last_scored)).toLocaleDateString()} ${new Date(parseInt(meme.last_scored)).toLocaleTimeString()} UTC`
-                                        ) : (
-                                            <span>soon<sup>™</sup></span>
-                                        )}
-                                    </p>
+                        {/* Metrics section */}
+                        {meme.ranking_details && (
+                            <div className="space-y-4 pt-4 border-t border-zinc-800">
+                                <p className="text-sm text-zinc-400 font-bold mb-2">Memetic Power Ranking</p>
+                                <div className="grid grid-cols-5 gap-2 text-center">
+                                    <div>
+                                        <div className="text-green-500 text-lg">{formatScore(meme.ranking_details.total)}</div>
+                                        <div className="text-xs text-zinc-500">Total</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[#EC4899] text-lg">{formatScore(meme.ranking_details.virality)}</div>
+                                        <div className="text-xs text-zinc-500">Virality</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[#EC4899] text-lg">{formatScore(meme.ranking_details.relevance)}</div>
+                                        <div className="text-xs text-zinc-500">Relevance</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[#EC4899] text-lg">{formatScore(meme.ranking_details.uniqueness)}</div>
+                                        <div className="text-xs text-zinc-500">Uniqueness</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[#EC4899] text-lg">{formatScore(meme.ranking_details.longevity)}</div>
+                                        <div className="text-xs text-zinc-500">Longevity</div>
+                                    </div>
                                 </div>
-                                <p className="text-xl font-bold text-green-500">
-                                    {meme.votes.toString().padStart(3, '0')} mp
-                                </p>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </Card>
             </div>

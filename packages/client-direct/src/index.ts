@@ -436,6 +436,9 @@ export class DirectClient {
                             ...(meme.content.last_scored && {
                                 last_scored: meme.content.last_scored,
                             }),
+                            ...(meme.content.ranking_details && {
+                                ranking_details: meme.content.ranking_details
+                            }),
                         }));
 
                     res.json({ memes: formattedMemes });

@@ -37,7 +37,9 @@ function AppContent() {
             );
             const data = await res.json();
             console.log("Received memes data:", data.memes);
-            return data.memes as Meme[];
+            // Sort memes by votes in descending order
+            const sortedMemes = data.memes.sort((a: Meme, b: Meme) => b.votes - a.votes);
+            return sortedMemes as Meme[];
         },
         refetchInterval: 30000, // Refetch every 30 seconds
     });

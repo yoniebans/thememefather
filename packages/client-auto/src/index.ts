@@ -9,9 +9,16 @@ import {
     stringToUuid,
 } from "@ai16z/eliza";
 
+interface MarketSentiment {
+    fearGreedIndex: number;
+    volumeMetric: number;
+    overallSentiment: number;
+}
+
 interface RankingDetails {
     reasoning: string;
     timestamp: number;
+    marketContext?: MarketSentiment;
     history?: Array<{
         total: number;
         virality: number;
@@ -20,16 +27,68 @@ interface RankingDetails {
         longevity: number;
         reasoning: string;
         timestamp: number;
+        marketContext?: MarketSentiment;
     }>;
 }
 
+async function getMarketSentiment(): Promise<MarketSentiment> {
+    try {
+        // Get Fear & Greed Index
+        const fngResponse = await fetch("https://api.alternative.me/fng/");
+        const fngData = await fngResponse.json();
+        const fearGreedValue = parseInt(fngData.data[0].value);
+
+        // Get Bitcoin 24h volume change from CoinGecko
+        const cgResponse = await fetch(
+            "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_vol=true"
+        );
+        const cgData = await cgResponse.json();
+        const btcVolumeChange = cgData.bitcoin.usd_24h_vol;
+
+        // Calculate overall sentiment
+        const normalizedVolume = Math.min(
+            Math.max((btcVolumeChange / 1e10) * 100, 0),
+            100
+        );
+        const overallSentiment = Math.round(
+            fearGreedValue * 0.7 + normalizedVolume * 0.3
+        );
+
+        return {
+            fearGreedIndex: fearGreedValue,
+            volumeMetric: normalizedVolume,
+            overallSentiment,
+        };
+    } catch (error) {
+        elizaLogger.error("Failed to fetch market sentiment:", error);
+        return {
+            fearGreedIndex: 50,
+            volumeMetric: 0,
+            overallSentiment: 50,
+        };
+    }
+}
+
+function getSentimentDescription(sentiment: number): string {
+    if (sentiment >= 80) return "Extremely Bullish";
+    if (sentiment >= 60) return "Bullish";
+    if (sentiment >= 40) return "Neutral";
+    if (sentiment >= 20) return "Bearish";
+    return "Extremely Bearish";
+}
+
 const rankTemplate = `
-Given the following meme concept, evaluate its potential memetic power on a scale of 0-100 based on these criteria:
+You are a ruthlessly honest crypto meme analyst. Your job is to evaluate memes with brutal honesty, comparing them against current market conditions and existing memes.
 
 Meme Details:
 Name: {{mr_name}}
 Ticker: {{mr_ticker}}
 Description: {{mr_description}}
+
+Current Market Context:
+- Fear & Greed Index: {{mr_market_fear_greed}}/100
+- Market Sentiment: {{mr_market_sentiment}}
+- Trading Activity: {{mr_market_volume}}% of normal volume
 
 Recent Meme Rankings for Context:
 {{mr_recent_rankings}}
@@ -37,23 +96,60 @@ Recent Meme Rankings for Context:
 Previous Scores for This Meme:
 {{mr_previous_scores}}
 
-Evaluation Criteria:
-1. Virality (0-25): How likely is it to spread rapidly?
-2. Relevance (0-25): How well does it connect with crypto/web3 culture?
-3. Uniqueness (0-25): How original and distinctive is the concept?
-4. Longevity (0-25): Will it remain relevant beyond the immediate moment?
+Evaluation Framework:
 
-Consider how this meme compares to the recent rankings provided. Has its potential increased or decreased based on market conditions and competing memes?
+1. Virality Potential (0-25):
+- Initial impact (meme shock value)
+- Share-worthiness
+- Cross-platform potential
+- Emotional triggers
+- Current market sentiment alignment
 
-Respond with a JSON markdown block containing only the scores and reasoning:
+2. Cultural Relevance (0-25):
+- Crypto/Web3 cultural fit
+- Market timing
+- Community resonance
+- Insider appeal
+- Technical sophistication
+
+3. Innovation Score (0-25):
+- Concept originality
+- Creative execution
+- Meme evolution potential
+- Pattern breaking
+- Competition differentiation
+
+4. Sustainability (0-25):
+- Long-term narrative potential
+- Adaptation capability
+- Community building potential
+- Market cycle resilience
+- Evolution opportunities
+
+Scoring Guidelines:
+0-15: Failed concept
+16-40: Weak potential
+41-60: Average
+61-80: Strong potential
+81-90: Exceptional
+91-100: Legendary
+
+IMPORTANT:
+- Be extremely critical
+- Compare with existing memes
+- Consider market timing
+- Point out fatal flaws
+- Evaluate against competitors
+
+Respond with a JSON markdown block containing only the scores and detailed reasoning:
 \`\`\`json
 {
-    "virality": 20,
-    "relevance": 18,
-    "uniqueness": 15,
-    "longevity": 12,
-    "total": 65,
-    "reasoning": "Strong viral potential due to relatable humor, good cultural fit with DeFi themes, somewhat derivative of existing concepts, moderate staying power"
+    "virality": <score 0-25>,
+    "relevance": <score 0-25>,
+    "uniqueness": <score 0-25>,
+    "longevity": <score 0-25>,
+    "total": <sum of scores>,
+    "reasoning": "IMPORTANT: Keep this a single line with only basic punctuation. Avoid quotes and special characters."
 }
 \`\`\`
 `;
@@ -82,6 +178,11 @@ export class AutoClient {
     async rankPendingMemes() {
         try {
             elizaLogger.info("=== Starting meme ranking process ===");
+
+            // Fetch market sentiment first
+            const marketSentiment = await getMarketSentiment();
+            elizaLogger.info("📊 Current market sentiment:", marketSentiment);
+
             const memeManager = this.runtime.getMemoryManager("memes");
 
             if (!memeManager) {
@@ -95,18 +196,7 @@ export class AutoClient {
             );
             elizaLogger.debug("Generated room ID:", roomId);
 
-            // Ensure user exists
-            elizaLogger.info("Ensuring user exists...");
-            await this.runtime.ensureUserExists(
-                this.runtime.agentId,
-                "meme_ranker",
-                this.runtime.character.name,
-                "auto"
-            );
-            elizaLogger.info("✅ User existence confirmed");
-
-            // Create base message for state composition
-            elizaLogger.info("Creating base message for state composition...");
+            // Rest of your existing setup code...
             const baseMessage: Memory = {
                 id: stringToUuid("meme-rank-base"),
                 userId: this.runtime.agentId,
@@ -118,50 +208,34 @@ export class AutoClient {
                 },
                 createdAt: Date.now(),
             };
-            elizaLogger.debug("Base message created:", baseMessage);
 
-            // Compose base state once
-            elizaLogger.info("Composing base state...");
             const baseState = await this.runtime.composeState(baseMessage, {
                 taskType: "meme_ranking",
                 evaluationType: "memetic_potential",
             });
-            elizaLogger.info("✅ Base state composed successfully");
-            elizaLogger.debug("Base state details:", baseState);
 
-            // Fetch pending memes
-            elizaLogger.info("Fetching pending memes...");
+            // Fetch and process memes
             const pendingMemes = await memeManager.getMemories({
                 roomId: this.runtime.agentId,
                 count: 50,
                 unique: true,
             });
-            elizaLogger.info(`Retrieved ${pendingMemes.length} total memes`);
 
-            // Filter for pending status
             const memesToRank = pendingMemes.filter(
                 (meme) => meme.content.status === "pending"
             );
-            elizaLogger.info(
-                `📊 Found ${memesToRank.length} pending memes to rank`
-            );
 
-            // Randomize the order of memes to rank
             const shuffledMemes = [...memesToRank].sort(
                 () => Math.random() - 0.5
             );
-            elizaLogger.info(
-                `📊 Randomized ${shuffledMemes.length} memes for ranking`
-            );
 
-            // Get historical context of all memes (including previously ranked)
+            // Get historical context
             const allMemes = await memeManager.getMemories({
                 roomId: this.runtime.agentId,
                 count: 100,
                 unique: true,
             });
 
-            // Build scoring context that will be updated during the ranking loop
             let currentRoundScores = allMemes
                 .filter(
                     (meme) =>
@@ -177,7 +251,7 @@ export class AutoClient {
                         .timestamp,
                 }))
                 .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 10); // Keep only 10 most recent rankings
+                .slice(0, 10);
 
             // Rank each meme
             for (const meme of shuffledMemes) {
@@ -185,7 +259,6 @@ export class AutoClient {
                     `\n=== Ranking meme: ${meme.content.ticker} ===`
                 );
 
-                // Format previous scores for this meme
                 const previousScores =
                     (meme.content.ranking_details as RankingDetails)?.history ||
                     [];
@@ -196,7 +269,6 @@ export class AutoClient {
                     )
                     .join("\n");
 
-                // Format recent rankings
                 const formattedRecentRankings = currentRoundScores
                     .map(
                         (score) =>
@@ -204,7 +276,7 @@ export class AutoClient {
                     )
                     .join("\n");
 
-                // Create context with historical data
+                // Create context with market data
                 const context = composeContext({
                     state: {
                         ...baseState,
@@ -212,7 +284,13 @@ export class AutoClient {
                         mr_ticker: meme.content.ticker,
                         mr_description: meme.content.description,
                         mr_recent_rankings: formattedRecentRankings,
-                        mr_previous_scores: formattedPreviousScores
+                        mr_previous_scores: formattedPreviousScores,
+                        mr_market_fear_greed: marketSentiment.fearGreedIndex,
+                        mr_market_sentiment: getSentimentDescription(
+                            marketSentiment.overallSentiment
+                        ),
+                        mr_market_volume:
+                            marketSentiment.volumeMetric.toFixed(1),
                     },
                     template: rankTemplate,
                 });
@@ -223,7 +301,7 @@ export class AutoClient {
                     modelClass: ModelClass.SMALL,
                 });
 
-                // Prepare historical data
+                // Update historical data
                 const previousHistory =
                     (meme.content.ranking_details as RankingDetails)?.history ||
                     [];
@@ -235,9 +313,10 @@ export class AutoClient {
                     longevity: ranking.longevity,
                     reasoning: ranking.reasoning,
                     timestamp: Date.now(),
+                    marketContext: marketSentiment,
                 };
 
-                // Update meme with new ranking and history
+                // Update meme
                 const updatedMeme: Memory = {
                     id: meme.id,
                     content: {
@@ -248,7 +327,7 @@ export class AutoClient {
                             history: [
                                 ...previousHistory,
                                 newHistoryEntry,
-                            ].slice(-5), // Keep last 5 rankings
+                            ].slice(-5),
                         },
                     },
                     userId: meme.userId,
@@ -257,16 +336,16 @@ export class AutoClient {
                     createdAt: meme.createdAt,
                 };
 
-                // Update the current round scores for next meme's context
+                // Update scores for next iteration
                 currentRoundScores.unshift({
                     ticker: meme.content.ticker,
                     score: ranking.total,
                     reasoning: ranking.reasoning,
                     timestamp: Date.now(),
                 });
-                currentRoundScores = currentRoundScores.slice(0, 10); // Keep only 10 most recent
+                currentRoundScores = currentRoundScores.slice(0, 10);
 
-                // Update meme in storage
+                // Save updates
                 await memeManager.removeMemory(meme.id);
                 await memeManager.createMemory(updatedMeme, true);
                 elizaLogger.info(
