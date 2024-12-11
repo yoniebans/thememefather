@@ -13,16 +13,7 @@ import Chat from "./Chat";
 import { useState } from "react";
 import { MemeModal } from "@/components/MemeModal";
 const API_URL = import.meta.env.VITE_API_URL;
-
-interface Meme {
-    id: string;
-    ticker: string;
-    description: string;
-    votes: number;
-    author: string;
-    timestamp: string;
-    url?: string;
-}
+import type { Meme } from "@/types/meme";
 
 function AppContent() {
     const { connected } = useWallet();
@@ -62,9 +53,14 @@ function AppContent() {
                     </h3>
                     <p className="text-sm text-zinc-400">by {meme.author}</p>
                     <p className="text-xs text-zinc-500">
-                        {new Date(parseInt(meme.timestamp)).toLocaleDateString()}{" "}
-                        {new Date(parseInt(meme.timestamp)).toLocaleTimeString()}{" "}
-                        UTC
+                        last scan:{' '}
+                        {meme.ranking_details?.timestamp ? (
+                            `${new Date(meme.ranking_details.timestamp).toLocaleDateString()} ${new Date(
+                                meme.ranking_details.timestamp
+                            ).toLocaleTimeString()} UTC`
+                        ) : (
+                            <>soon<sup>tm</sup></>
+                        )}
                     </p>
                 </div>
                 {meme.url && (
