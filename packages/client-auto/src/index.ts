@@ -33,37 +33,58 @@ interface RankingDetails {
 
 async function getMarketSentiment(): Promise<MarketSentiment> {
     try {
-        // Get Fear & Greed Index
-        const fngResponse = await fetch("https://api.alternative.me/fng/");
-        const fngData = await fngResponse.json();
+        // Fetch current data and historical data in parallel
+        const [cgResponse, fngResponse, historicalResponse] = await Promise.all([
+            fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_vol=true"),
+            fetch("https://api.alternative.me/fng/"),
+            fetch("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily")
+        ]);
+
+        const [cgData, fngData, historicalData] = await Promise.all([
+            cgResponse.json(),
+            fngResponse.json(),
+            historicalResponse.json()
+        ]);
+
+        const currentVolume = cgData.bitcoin.usd_24h_vol;
         const fearGreedValue = parseInt(fngData.data[0].value);
+        const historicalVolumes = historicalData.total_volumes.map(([_, volume]) => volume);
 
-        // Get Bitcoin 24h volume change from CoinGecko
-        const cgResponse = await fetch(
-            "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_vol=true"
-        );
-        const cgData = await cgResponse.json();
-        const btcVolumeChange = cgData.bitcoin.usd_24h_vol;
+        elizaLogger.info("Current 24h Volume:", currentVolume.toLocaleString());
+        elizaLogger.info("Historical Volume Range:", {
+            min: Math.min(...historicalVolumes).toLocaleString(),
+            max: Math.max(...historicalVolumes).toLocaleString(),
+            avg: (historicalVolumes.reduce((a, b) => a + b, 0) / historicalVolumes.length).toLocaleString()
+        });
 
-        // Calculate overall sentiment
-        const normalizedVolume = Math.min(
-            Math.max((btcVolumeChange / 1e10) * 100, 0),
-            100
-        );
+        // Calculate percentile of current volume compared to history
+        const volumesBelow = historicalVolumes.filter(v => v < currentVolume).length;
+        const volumeMetric = Math.round((volumesBelow / historicalVolumes.length) * 100);
+        elizaLogger.info("Volume Metrics:", {
+            volumesBelow,
+            totalSamples: historicalVolumes.length,
+            percentile: volumeMetric
+        });
+
         const overallSentiment = Math.round(
-            fearGreedValue * 0.7 + normalizedVolume * 0.3
+            fearGreedValue * 0.7 + volumeMetric * 0.3
         );
+        elizaLogger.info("Sentiment Components:", {
+            fearGreed: fearGreedValue,
+            volumeMetric,
+            overall: overallSentiment
+        });
 
         return {
             fearGreedIndex: fearGreedValue,
-            volumeMetric: normalizedVolume,
+            volumeMetric,
             overallSentiment,
         };
     } catch (error) {
         elizaLogger.error("Failed to fetch market sentiment:", error);
         return {
             fearGreedIndex: 50,
-            volumeMetric: 0,
+            volumeMetric: 50,
             overallSentiment: 50,
         };
     }
@@ -170,7 +191,7 @@ export class AutoClient {
                 async () => {
                     await this.rankPendingMemes();
                 },
-                4 * 60 * 60 * 1000 // 4 hours in milliseconds
+                24 * 60 * 60 * 1000 // 24 hours in milliseconds
             );
         }, 30 * 1000); // 30 seconds delay
     }
