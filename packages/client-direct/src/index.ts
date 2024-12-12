@@ -23,8 +23,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 export const messageHandlerTemplate =
     // {{goals}}
-    `# Action Examples
-{{actionExamples}}
+    `{{actionExamples}}
 (Action examples are for reference only. Do not use the information from them in your response.)
 
 # Knowledge
@@ -43,6 +42,8 @@ About {{agentName}}:
 Note that {{agentName}} is capable of reading/seeing/hearing various forms of media, including images, videos, audio, plaintext and PDFs. Recent attachments have been included above under the "Attachments" section.
 
 {{messageDirections}}
+
+{{characterMessageExamples}}
 
 {{recentMessages}}
 
@@ -202,10 +203,13 @@ export class DirectClient {
                     template: messageHandlerTemplate,
                 });
 
+                elizaLogger.log(
+                    "Generating message response for direct client"
+                );
                 const response = await generateMessageResponse({
                     runtime: runtime,
                     context,
-                    modelClass: ModelClass.SMALL,
+                    modelClass: ModelClass.MEDIUM,
                 });
 
                 // save response to memory
@@ -224,11 +228,13 @@ export class DirectClient {
                     return;
                 }
 
+                await runtime.updateRecentMessageState(state);
+
                 let message = null as Content | null;
 
                 await runtime.evaluate(memory, state);
 
-                const _result = await runtime.processActions(
+                await runtime.processActions(
                     memory,
                     [responseMessage],
                     state,
@@ -237,6 +243,20 @@ export class DirectClient {
                         return [memory];
                     }
                 );
+
+                // Also transform attachments in the message if it exists
+                if (message?.attachments) {
+                    elizaLogger.log("=== Message Attachments ===");
+                    message.attachments = message.attachments.map(
+                        (attachment) => ({
+                            ...attachment,
+                            url: `/images/${attachment.url.split("/").pop()}`,
+                        })
+                    );
+                    elizaLogger.log(
+                        JSON.stringify(message.attachments, null, 2)
+                    );
+                }
 
                 if (message) {
                     res.json([response, message]);
@@ -374,6 +394,80 @@ export class DirectClient {
                         stack: error.stack,
                     });
                 }
+            }
+        );
+
+        this.app.get(
+            "/:agentId/memes",
+            async (req: express.Request, res: express.Response) => {
+                const agentId = req.params.agentId;
+                const runtime = this.agents.get(agentId);
+
+                if (!runtime) {
+                    res.status(404).send("Agent not found");
+                    return;
+                }
+
+                try {
+                    const memoryManager = runtime.getMemoryManager("memes");
+                    const memes = await memoryManager.getMemories({
+                        roomId: runtime.agentId,
+                        count: 50,
+                        unique: true,
+                    });
+
+                    // Format memes and sort by createdAt in descending order
+                    const formattedMemes = memes
+                        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+                        .map((meme) => ({
+                            id: meme.id,
+                            ticker: `$${((meme.content.ticker as string) || "UNKNOWN").toUpperCase()}`,
+                            description:
+                                meme.content.description ||
+                                "No description available",
+                            votes: meme.content.votes || 0,
+                            author: meme.userId || "Anonymous",
+                            timestamp:
+                                meme.createdAt?.toString() ||
+                                new Date().toISOString(),
+                            ...(meme.content.image_url && {
+                                url: `/images/${(meme.content.image_url as string).split("/").pop()}`,
+                            }),
+                            ...(meme.content.last_scored && {
+                                last_scored: meme.content.last_scored,
+                            }),
+                            ...(meme.content.ranking_details && {
+                                ranking_details: meme.content.ranking_details
+                            }),
+                        }));
+
+                    res.json({ memes: formattedMemes });
+                } catch (error) {
+                    console.error("Error fetching memes:", error);
+                    res.status(500).json({
+                        error: "Failed to fetch memes",
+                        details: error.message,
+                    });
+                }
+            }
+        );
+
+        // Add an endpoint to serve the images
+        this.app.get(
+            "/images/:filename",
+            (req: express.Request, res: express.Response) => {
+                const filename = req.params.filename;
+                const imagePath = path.join(
+                    process.cwd(),
+                    "generatedImages",
+                    filename
+                );
+                res.sendFile(imagePath, (err) => {
+                    if (err) {
+                        console.error("Error sending file:", err);
+                        res.status(404).send("Image not found");
+                    }
+                });
             }
         );
     }

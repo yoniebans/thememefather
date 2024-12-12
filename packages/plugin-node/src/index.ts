@@ -1,6 +1,6 @@
 export * from "./services/index.ts";
 
-import { Plugin } from "@ai16z/eliza";
+import { elizaLogger, Plugin } from "@ai16z/eliza";
 
 import {
     BrowserService,
@@ -16,6 +16,7 @@ import {
 export type NodePlugin = ReturnType<typeof createNodePlugin>;
 
 export function createNodePlugin() {
+    elizaLogger.info("Creating Node plugin");
     return {
         name: "default",
         description: "Default plugin, with basic actions and evaluators",

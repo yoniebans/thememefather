@@ -8,6 +8,8 @@
         "start:client": "pnpm --dir client dev",
         "start:debug": "cross-env NODE_ENV=development VERBOSE=true DEBUG=eliza:* pnpm --filter \"@ai16z/agent\" start --isRoot",
         "dev": "bash ./scripts/dev.sh",
+        "dev-new": "bash ./scripts/dev_new.sh",
+        "dev:build": "turbo run build --filter=!eliza-docs",
         "lint": "bash ./scripts/lint.sh",
         "prettier-check": "npx prettier --check .",
         "prettier": "npx prettier --write .",

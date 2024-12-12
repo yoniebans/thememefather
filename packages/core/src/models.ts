@@ -10,7 +10,7 @@ export const models: Models = {
             maxOutputTokens: 8192,
             frequency_penalty: 0.0,
             presence_penalty: 0.0,
-            temperature: 0.6,
+            temperature: 0.8,
         },
         model: {
             [ModelClass.SMALL]: settings.SMALL_OPENAI_MODEL || "gpt-4o-mini",

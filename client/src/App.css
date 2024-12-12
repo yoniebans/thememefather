@@ -1,8 +1,8 @@
-#root {
+/* #root {
     max-width: 1280px;
     margin: 0 auto;
     text-align: center;
-}
+} */
 
 .logo {
     height: 6em;
@@ -38,4 +38,80 @@
 
 .read-the-docs {
     color: #888;
+}
+
+@keyframes scroll {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-scroll {
+    display: flex;
+    animation: scroll 30s linear infinite;
+    width: max-content;
+}
+
+html, body {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+@keyframes sparkle {
+    0% {
+        opacity: 0;
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(236, 72, 153, 0);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.01);
+        box-shadow: 0 0 20px 10px rgba(236, 72, 153, 0.2);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(236, 72, 153, 0);
+    }
+}
+
+.sparkle-animation {
+    animation: sparkle 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: center;
+    backface-visibility: hidden;
+    overflow: hidden;
+}
+
+/* Add this CSS to your Chat component's stylesheet */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #EC4899; /* Pink color */
+    border-radius: 10px;
+    border: 2px solid transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #FF6FB5; /* Slightly lighter pink on hover */
+}
+
+@keyframes scroll-left {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-100%);
+    }
+}
+
+.animate-scroll-left {
+    animation: scroll-left 40s linear infinite;
 }

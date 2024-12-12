@@ -56,7 +56,7 @@ export class AgentRuntime implements IAgentRuntime {
      * Default count for recent messages to be kept in memory.
      * @private
      */
-    readonly #conversationLength = 32 as number;
+    readonly #conversationLength = 24 as number;
     /**
      * The ID of the agent
      */
@@ -139,6 +139,11 @@ export class AgentRuntime implements IAgentRuntime {
      */
     knowledgeManager: IMemoryManager;
 
+    /**
+     * Store and manage meme entries
+     */
+    memeManager: IMemoryManager;
+
     services: Map<ServiceType, Service> = new Map();
     memoryManagers: Map<string, IMemoryManager> = new Map();
     cacheManager: ICacheManager;
@@ -159,6 +164,7 @@ export class AgentRuntime implements IAgentRuntime {
     }
 
     getMemoryManager(tableName: string): IMemoryManager | null {
+        elizaLogger.info("Getting memory manager for", tableName);
         return this.memoryManagers.get(tableName) || null;
     }
 
@@ -285,6 +291,14 @@ export class AgentRuntime implements IAgentRuntime {
             tableName: "fragments",
         });
 
+        this.memeManager = new MemoryManager({
+            runtime: this,
+            tableName: "memes",
+        });
+
+        this.memoryManagers.set("memes", this.memeManager);
+        elizaLogger.success("Meme manager registered");
+
         (opts.managers ?? []).forEach((manager: IMemoryManager) => {
             this.registerMemoryManager(manager);
         });
@@ -342,30 +356,90 @@ export class AgentRuntime implements IAgentRuntime {
         ];
 
         this.plugins.forEach((plugin) => {
+            if (plugin.actions?.length > 0) {
+                elizaLogger.info(
+                    `Registering ${plugin.actions.length} actions for plugin:`,
+                    plugin.name
+                );
+            } else {
+                elizaLogger.info(`No actions for plugin:`, plugin.name);
+            }
+
             plugin.actions?.forEach((action) => {
                 this.registerAction(action);
             });
+
+            if (plugin.evaluators?.length > 0) {
+                elizaLogger.info(
+                    `Registering ${plugin.evaluators.length} evaluators for plugin:`,
+                    plugin.name
+                );
+            } else {
+                elizaLogger.info(`No evaluators for plugin:`, plugin.name);
+            }
 
             plugin.evaluators?.forEach((evaluator) => {
                 this.registerEvaluator(evaluator);
             });
 
+            if (plugin.services?.length > 0) {
+                elizaLogger.info(
+                    `Registering ${plugin.services.length} services for plugin:`,
+                    plugin.name
+                );
+            } else {
+                elizaLogger.info(`No services for plugin:`, plugin.name);
+            }
+
             plugin.services?.forEach((service) => {
                 this.registerService(service);
             });
+
+            if (plugin.providers?.length > 0) {
+                elizaLogger.info(
+                    `Registering ${plugin.providers.length} providers for plugin:`,
+                    plugin.name
+                );
+            } else {
+                elizaLogger.info(`No providers for plugin:`, plugin.name);
+            }
 
             plugin.providers?.forEach((provider) => {
                 this.registerContextProvider(provider);
             });
         });
 
+        if (opts.actions?.length > 0) {
+            elizaLogger.info(
+                `Registering ${opts.actions.length} actions for runtime`
+            );
+        } else {
+            elizaLogger.info(`No actions for runtime`);
+        }
+
         (opts.actions ?? []).forEach((action) => {
             this.registerAction(action);
         });
 
+        if (opts.providers?.length > 0) {
+            elizaLogger.info(
+                `Registering ${opts.providers.length} providers for runtime`
+            );
+        } else {
+            elizaLogger.info(`No providers for runtime`);
+        }
+
         (opts.providers ?? []).forEach((provider) => {
             this.registerContextProvider(provider);
         });
+
+        if (opts.evaluators?.length > 0) {
+            elizaLogger.info(
+                `Registering ${opts.evaluators.length} evaluators for runtime`
+            );
+        } else {
+            elizaLogger.info(`No evaluators for runtime`);
+        }
 
         (opts.evaluators ?? []).forEach((evaluator: Evaluator) => {
             this.registerEvaluator(evaluator);
@@ -373,8 +447,10 @@ export class AgentRuntime implements IAgentRuntime {
     }
 
     async initialize() {
+        elizaLogger.info("Initializing runtime");
         for (const [serviceType, service] of this.services.entries()) {
             try {
+                elizaLogger.info(`Initializing service: ${serviceType}`);
                 await service.initialize(this);
                 this.services.set(serviceType, service);
                 elizaLogger.success(
@@ -390,10 +466,15 @@ export class AgentRuntime implements IAgentRuntime {
         }
 
         for (const plugin of this.plugins) {
-            if (plugin.services)
+            if (plugin.services) {
+                elizaLogger.info(
+                    `Initializing ${plugin.services.length} services for plugin:`,
+                    plugin.name
+                );
                 await Promise.all(
                     plugin.services?.map((service) => service.initialize(this))
                 );
+            }
         }
 
         if (

@@ -24,26 +24,9 @@ import {
     stringToUuid,
     validateCharacterConfig,
 } from "@ai16z/eliza";
-import { zgPlugin } from "@ai16z/plugin-0g";
-import createGoatPlugin from "@ai16z/plugin-goat";
 import { bootstrapPlugin } from "@ai16z/plugin-bootstrap";
-// import { intifacePlugin } from "@ai16z/plugin-intiface";
-import {
-    coinbaseCommercePlugin,
-    coinbaseMassPaymentsPlugin,
-    tradePlugin,
-    tokenContractPlugin,
-    webhookPlugin,
-    advancedTradePlugin,
-} from "@ai16z/plugin-coinbase";
-import { confluxPlugin } from "@ai16z/plugin-conflux";
-import { imageGenerationPlugin } from "@ai16z/plugin-image-generation";
-import { evmPlugin } from "@ai16z/plugin-evm";
 import { createNodePlugin } from "@ai16z/plugin-node";
-import { solanaPlugin } from "@ai16z/plugin-solana";
-import { teePlugin, TEEMode } from "@ai16z/plugin-tee";
-import { aptosPlugin, TransferAptosToken } from "@ai16z/plugin-aptos";
-import { flowPlugin } from "@ai16z/plugin-flow";
+import { memeFatherPlugin } from "@ai16z/plugin-meme-father";
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
@@ -378,79 +361,15 @@ export async function createAgent(
 
     nodePlugin ??= createNodePlugin();
 
-    const teeMode = getSecret(character, "TEE_MODE") || "OFF";
-    const walletSecretSalt = getSecret(character, "WALLET_SECRET_SALT");
-
-    // Validate TEE configuration
-    if (teeMode !== TEEMode.OFF && !walletSecretSalt) {
-        elizaLogger.error(
-            "WALLET_SECRET_SALT required when TEE_MODE is enabled"
-        );
-        throw new Error("Invalid TEE configuration");
-    }
-
-    let goatPlugin: any | undefined;
-    if (getSecret(character, "ALCHEMY_API_KEY")) {
-        goatPlugin = await createGoatPlugin((secret) =>
-            getSecret(character, secret)
-        );
-    }
-
     return new AgentRuntime({
         databaseAdapter: db,
         token,
         modelProvider: character.modelProvider,
         evaluators: [],
         character,
-        plugins: [
-            bootstrapPlugin,
-            getSecret(character, "CONFLUX_CORE_PRIVATE_KEY")
-                ? confluxPlugin
-                : null,
-            nodePlugin,
-            getSecret(character, "SOLANA_PUBLIC_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                !getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
-                ? solanaPlugin
-                : null,
-            getSecret(character, "EVM_PRIVATE_KEY") ||
-            (getSecret(character, "WALLET_PUBLIC_KEY") &&
-                getSecret(character, "WALLET_PUBLIC_KEY")?.startsWith("0x"))
-                ? evmPlugin
-                : null,
-            getSecret(character, "ZEROG_PRIVATE_KEY") ? zgPlugin : null,
-            getSecret(character, "COINBASE_COMMERCE_KEY")
-                ? coinbaseCommercePlugin
-                : null,
-            getSecret(character, "FAL_API_KEY") ||
-            getSecret(character, "OPENAI_API_KEY") ||
-            getSecret(character, "HEURIST_API_KEY")
-                ? imageGenerationPlugin
-                : null,
-            ...(getSecret(character, "COINBASE_API_KEY") &&
-            getSecret(character, "COINBASE_PRIVATE_KEY")
-                ? [
-                      coinbaseMassPaymentsPlugin,
-                      tradePlugin,
-                      tokenContractPlugin,
-                      advancedTradePlugin,
-                  ]
-                : []),
-            ...(teeMode !== TEEMode.OFF && walletSecretSalt
-                ? [teePlugin, solanaPlugin]
-                : []),
-            getSecret(character, "COINBASE_API_KEY") &&
-            getSecret(character, "COINBASE_PRIVATE_KEY") &&
-            getSecret(character, "COINBASE_NOTIFICATION_URI")
-                ? webhookPlugin
-                : null,
-            getSecret(character, "ALCHEMY_API_KEY") ? goatPlugin : null,
-            getSecret(character, "FLOW_ADDRESS") &&
-            getSecret(character, "FLOW_PRIVATE_KEY")
-                ? flowPlugin
-                : null,
-            getSecret(character, "APTOS_PRIVATE_KEY") ? aptosPlugin : null,
-        ].filter(Boolean),
+        plugins: [bootstrapPlugin, nodePlugin, memeFatherPlugin].filter(
+            Boolean
+        ),
         providers: [],
         actions: [],
         services: [],
