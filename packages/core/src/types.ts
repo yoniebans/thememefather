@@ -1172,3 +1172,10 @@ export type KnowledgeItem = {
     id: UUID;
     content: Content;
 };
+
+export interface ActionResponse {
+    like: boolean;
+    retweet: boolean;
+    quote?: boolean;
+    reply?: boolean;
+}
