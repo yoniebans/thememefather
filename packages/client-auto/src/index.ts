@@ -2,7 +2,7 @@ import {
     Client,
     IAgentRuntime,
     Memory,
-    generateObject,
+    generateObjectDEPRECATED,
     elizaLogger,
     composeContext,
     ModelClass,
@@ -34,36 +34,51 @@ interface RankingDetails {
 async function getMarketSentiment(): Promise<MarketSentiment> {
     try {
         // Fetch current data and historical data in parallel
-        const [cgResponse, fngResponse, historicalResponse] = await Promise.all([
-            fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_vol=true"),
-            fetch("https://api.alternative.me/fng/"),
-            fetch("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily")
-        ]);
+        const [cgResponse, fngResponse, historicalResponse] = await Promise.all(
+            [
+                fetch(
+                    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_vol=true"
+                ),
+                fetch("https://api.alternative.me/fng/"),
+                fetch(
+                    "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
+                ),
+            ]
+        );
 
         const [cgData, fngData, historicalData] = await Promise.all([
             cgResponse.json(),
             fngResponse.json(),
-            historicalResponse.json()
+            historicalResponse.json(),
         ]);
 
         const currentVolume = cgData.bitcoin.usd_24h_vol;
         const fearGreedValue = parseInt(fngData.data[0].value);
-        const historicalVolumes = historicalData.total_volumes.map(([_, volume]) => volume);
+        const historicalVolumes = historicalData.total_volumes.map(
+            ([_, volume]) => volume
+        );
 
         elizaLogger.info("Current 24h Volume:", currentVolume.toLocaleString());
         elizaLogger.info("Historical Volume Range:", {
             min: Math.min(...historicalVolumes).toLocaleString(),
             max: Math.max(...historicalVolumes).toLocaleString(),
-            avg: (historicalVolumes.reduce((a, b) => a + b, 0) / historicalVolumes.length).toLocaleString()
+            avg: (
+                historicalVolumes.reduce((a, b) => a + b, 0) /
+                historicalVolumes.length
+            ).toLocaleString(),
         });
 
         // Calculate percentile of current volume compared to history
-        const volumesBelow = historicalVolumes.filter(v => v < currentVolume).length;
-        const volumeMetric = Math.round((volumesBelow / historicalVolumes.length) * 100);
+        const volumesBelow = historicalVolumes.filter(
+            (v) => v < currentVolume
+        ).length;
+        const volumeMetric = Math.round(
+            (volumesBelow / historicalVolumes.length) * 100
+        );
         elizaLogger.info("Volume Metrics:", {
             volumesBelow,
             totalSamples: historicalVolumes.length,
-            percentile: volumeMetric
+            percentile: volumeMetric,
         });
 
         const overallSentiment = Math.round(
@@ -72,7 +87,7 @@ async function getMarketSentiment(): Promise<MarketSentiment> {
         elizaLogger.info("Sentiment Components:", {
             fearGreed: fearGreedValue,
             volumeMetric,
-            overall: overallSentiment
+            overall: overallSentiment,
         });
 
         return {
@@ -316,7 +331,7 @@ export class AutoClient {
                     template: rankTemplate,
                 });
 
-                const ranking = await generateObject({
+                const ranking = await generateObjectDEPRECATED({
                     runtime: this.runtime,
                     context,
                     modelClass: ModelClass.SMALL,

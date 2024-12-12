@@ -7,7 +7,7 @@ import {
     generateImage,
     ModelClass,
     elizaLogger,
-    generateObject,
+    generateObjectDEPRECATED,
     formatMessages,
     HandlerCallback,
     Content,
@@ -186,7 +186,7 @@ export const createMemeAction: Action = {
         });
 
         // Generate the meme details
-        const meme = await generateObject({
+        const meme = await generateObjectDEPRECATED({
             runtime,
             context: memeContext,
             modelClass: ModelClass.LARGE,
@@ -225,7 +225,7 @@ export const createMemeAction: Action = {
             template: shouldCreateMemeTemplate,
         });
 
-        const shouldCreateMeme = await generateObject({
+        const shouldCreateMeme = await generateObjectDEPRECATED({
             runtime,
             context: shouldCreateMemeContext,
             modelClass: ModelClass.MEDIUM,
