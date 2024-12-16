@@ -8,6 +8,7 @@ import {
     getEmbeddingZeroVector,
     elizaLogger,
     stringToUuid,
+    embed,
 } from "@ai16z/eliza";
 import {
     QueryTweetsResponse,
@@ -235,6 +236,48 @@ export class ClientBase extends EventEmitter {
 
         await this.loadLatestCheckedTweetId();
         await this.populateTimeline();
+    }
+
+    async generateEmbedding(text: string): Promise<number[]> {
+        try {
+            // Enhanced validation
+            if (!text || typeof text !== "string" || text.trim().length === 0) {
+                elizaLogger.warn(
+                    "Empty or invalid text provided for embedding generation:",
+                    {
+                        receivedText: text,
+                        type: typeof text,
+                    }
+                );
+                return getEmbeddingZeroVector();
+            }
+
+            // Generate embedding
+            const embedding = await embed(this.runtime, text);
+
+            // Log the embedding details
+            elizaLogger.debug("Generated embedding:", {
+                text: text.slice(0, 100) + (text.length > 100 ? "..." : ""), // First 100 chars of input
+                embeddingLength: embedding?.length,
+                embeddingSample: embedding?.slice(0, 5), // First 5 values
+                isArray: Array.isArray(embedding),
+                allNumbers: embedding?.every((n) => typeof n === "number"),
+            });
+
+            // Validate embedding result
+            if (!Array.isArray(embedding) || embedding.length === 0) {
+                elizaLogger.warn("Invalid embedding generated:", {
+                    embedding,
+                    textLength: text.length,
+                });
+                return getEmbeddingZeroVector();
+            }
+
+            return embedding;
+        } catch (error) {
+            elizaLogger.error("Error generating embedding:", error);
+            return getEmbeddingZeroVector();
+        }
     }
 
     async fetchAgentTweets(count: number): Promise<Tweet[]> {

@@ -10,7 +10,8 @@ export const twitterEnvSchema = z.object({
     TWITTER_EMAIL: z.string().email("Valid Twitter email is required"),
     TWITTER_COOKIES: z.string().optional(),
     TWITTER_2FA_SECRET: z.string().optional(),
-    // Publishing config as individual env vars
+
+    // Publishing config
     TWITTER_ALLOW_THREADS: z
         .string()
         .optional()
@@ -35,6 +36,16 @@ export const twitterEnvSchema = z.object({
         .string()
         .optional()
         .transform((val) => val?.toLowerCase() === "true"),
+
+    // Engagement config
+    TWITTER_TIMELINE_DEPTH: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 15)),
+    TWITTER_ACTION_INTERVAL: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 300000)), // 5 minutes default
 });
 
 export type TwitterConfig = z.infer<typeof twitterEnvSchema>;
@@ -63,6 +74,7 @@ export async function validateTwitterConfig(
             TWITTER_2FA_SECRET:
                 runtime.getSetting("TWITTER_2FA_SECRET") ||
                 process.env.TWITTER_2FA_SECRET,
+            // Publishing settings
             TWITTER_ALLOW_THREADS:
                 runtime.getSetting("TWITTER_ALLOW_THREADS") ||
                 process.env.TWITTER_ALLOW_THREADS,
@@ -81,6 +93,13 @@ export async function validateTwitterConfig(
             TWITTER_IMMEDIATE_FIRST_POST:
                 runtime.getSetting("TWITTER_IMMEDIATE_FIRST_POST") ||
                 process.env.TWITTER_IMMEDIATE_FIRST_POST,
+            // Engagement settings
+            TWITTER_TIMELINE_DEPTH:
+                runtime.getSetting("TWITTER_TIMELINE_DEPTH") ||
+                process.env.TWITTER_TIMELINE_DEPTH,
+            TWITTER_ACTION_INTERVAL:
+                runtime.getSetting("TWITTER_ACTION_INTERVAL") ||
+                process.env.TWITTER_ACTION_INTERVAL,
         };
 
         return twitterEnvSchema.parse(config);
@@ -110,5 +129,14 @@ export function getPublishingConfig(config: TwitterConfig) {
         postIntervalMin: config.TWITTER_POST_INTERVAL_MIN ?? 60,
         postIntervalMax: config.TWITTER_POST_INTERVAL_MAX ?? 90,
         immediateFirstPost: config.TWITTER_IMMEDIATE_FIRST_POST ?? false,
+        dryRun: config.TWITTER_DRY_RUN ?? false,
+    };
+}
+
+export function getEngagementConfig(config: TwitterConfig) {
+    return {
+        processingInterval: config.TWITTER_ACTION_INTERVAL ?? 300000,
+        timelineDepth: config.TWITTER_TIMELINE_DEPTH ?? 15,
+        dryRun: config.TWITTER_DRY_RUN ?? false,
     };
 }

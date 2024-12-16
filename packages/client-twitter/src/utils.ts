@@ -173,19 +173,30 @@ export async function sendTweet(
     const tweetChunks = splitTweetContent(content.text);
     const sentTweets: Tweet[] = [];
     let previousTweetId = inReplyTo;
-    const dryRun = client.runtime.getSetting("DRY_RUN") === "true";
 
     for (const chunk of tweetChunks) {
-        if (dryRun) {
-            // Create a mock tweet for dry run
-            const mockTweet: Tweet = {
-                id: `dry-run-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                text: chunk.trim(),
-                conversationId: inReplyTo,
-                timestamp: Date.now() / 1000,
-                userId: client.profile.id,
-                inReplyToStatusId: previousTweetId,
-                permanentUrl: `[DRY RUN] would be posted as reply to: ${previousTweetId}`,
+        const result = await client.requestQueue.add(
+            async () =>
+                await client.twitterClient.sendTweet(
+                    chunk.trim(),
+                    previousTweetId
+                )
+        );
+        const body = await result.json();
+
+        // if we have a response
+        if (body?.data?.create_tweet?.tweet_results?.result) {
+            // Parse the response
+            const tweetResult = body.data.create_tweet.tweet_results.result;
+            const finalTweet: Tweet = {
+                id: tweetResult.rest_id,
+                text: tweetResult.legacy.full_text,
+                conversationId: tweetResult.legacy.conversation_id_str,
+                timestamp:
+                    new Date(tweetResult.legacy.created_at).getTime() / 1000,
+                userId: tweetResult.legacy.user_id_str,
+                inReplyToStatusId: tweetResult.legacy.in_reply_to_status_id_str,
+                permanentUrl: `https://twitter.com/${twitterUsername}/status/${tweetResult.rest_id}`,
                 hashtags: [],
                 mentions: [],
                 photos: [],
@@ -193,66 +204,13 @@ export async function sendTweet(
                 urls: [],
                 videos: [],
             };
-
-            // Save dry run information to file
-            const dryRunInfo = {
-                timestamp: new Date().toISOString(),
-                chunk: chunk.trim(),
-                inReplyTo: previousTweetId,
-                twitterUsername,
-                content: content,
-            };
-
-            await client.runtime.cacheManager.set(
-                `twitter/dry_run_tweets/${mockTweet.id}.json`,
-                JSON.stringify(dryRunInfo, null, 2)
-            );
-
-            elizaLogger.info("[DRY RUN] Would send tweet:", {
-                text: chunk.trim(),
-                inReplyTo: previousTweetId,
-            });
-
-            sentTweets.push(mockTweet);
-            previousTweetId = mockTweet.id;
+            sentTweets.push(finalTweet);
+            previousTweetId = finalTweet.id;
         } else {
-            const result = await client.requestQueue.add(
-                async () =>
-                    await client.twitterClient.sendTweet(
-                        chunk.trim(),
-                        previousTweetId
-                    )
-            );
-            const body = await result.json();
-
-            if (body?.data?.create_tweet?.tweet_results?.result) {
-                const tweetResult = body.data.create_tweet.tweet_results.result;
-                const finalTweet: Tweet = {
-                    id: tweetResult.rest_id,
-                    text: tweetResult.legacy.full_text,
-                    conversationId: tweetResult.legacy.conversation_id_str,
-                    timestamp:
-                        new Date(tweetResult.legacy.created_at).getTime() /
-                        1000,
-                    userId: tweetResult.legacy.user_id_str,
-                    inReplyToStatusId:
-                        tweetResult.legacy.in_reply_to_status_id_str,
-                    permanentUrl: `https://twitter.com/${twitterUsername}/status/${tweetResult.rest_id}`,
-                    hashtags: [],
-                    mentions: [],
-                    photos: [],
-                    thread: [],
-                    urls: [],
-                    videos: [],
-                };
-                sentTweets.push(finalTweet);
-                previousTweetId = finalTweet.id;
-            } else {
-                console.error("Error sending chunk", chunk, "response:", body);
-            }
+            console.error("Error sending chunk", chunk, "repsonse:", body);
         }
 
-        // Wait a bit between tweets to simulate real behavior even in dry run
+        // Wait a bit between tweets to avoid rate limiting issues
         await wait(1000, 2000);
     }
 

@@ -3,15 +3,21 @@ import {
     Client as ElizaClient,
     elizaLogger,
 } from "@ai16z/eliza";
-import { validateTwitterConfig, getPublishingConfig } from "./environment.ts";
+import {
+    validateTwitterConfig,
+    getPublishingConfig,
+    getEngagementConfig,
+} from "./environment.ts";
 import { ClientBase } from "./base.ts";
 import { TwitterPublishingService } from "./publishing.ts";
+import { TwitterEngagementService } from "./engagement.ts";
 import { EventEmitter } from "events";
 
 export class TwitterClient extends EventEmitter {
     client: ClientBase;
     runtime: IAgentRuntime;
     publishingService: TwitterPublishingService;
+    engagementService: TwitterEngagementService;
 
     constructor(runtime: IAgentRuntime) {
         super();
@@ -23,6 +29,7 @@ export class TwitterClient extends EventEmitter {
         elizaLogger.log("Initializing Twitter client");
         const config = await validateTwitterConfig(this.runtime);
         const publishingConfig = getPublishingConfig(config);
+        const engagementConfig = getEngagementConfig(config);
 
         this.publishingService = new TwitterPublishingService(
             this.client,
@@ -30,8 +37,15 @@ export class TwitterClient extends EventEmitter {
             publishingConfig
         );
 
+        this.engagementService = new TwitterEngagementService(
+            this.client,
+            this.runtime,
+            engagementConfig
+        );
+
         await this.client.init();
         await this.publishingService.start();
+        await this.engagementService.start();
         elizaLogger.success("Twitter client initialized");
     }
 
@@ -40,6 +54,10 @@ export class TwitterClient extends EventEmitter {
         if (this.publishingService) {
             await this.publishingService.stop();
             elizaLogger.success("Twitter publishing service stopped");
+        }
+        if (this.engagementService) {
+            await this.engagementService.stop();
+            elizaLogger.success("Twitter engagement service stopped");
         }
     }
 }

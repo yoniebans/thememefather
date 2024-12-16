@@ -99,6 +99,7 @@ export interface PublishingServiceConfig {
     postIntervalMin?: number;
     postIntervalMax?: number;
     immediateFirstPost?: boolean;
+    dryRun?: boolean;
 }
 
 export class TwitterPublishingService {
@@ -126,6 +127,7 @@ export class TwitterPublishingService {
             postIntervalMin: config.postIntervalMin || 60,
             postIntervalMax: config.postIntervalMax || 90,
             immediateFirstPost: config.immediateFirstPost || false,
+            dryRun: config.dryRun || false,
         };
         this.characterEntropy = new CharacterEntropy(this.runtime);
     }
@@ -277,7 +279,7 @@ export class TwitterPublishingService {
     }
 
     private async publishSingleTweet(content: string) {
-        if (this.runtime.getSetting("TWITTER_DRY_RUN") === "true") {
+        if (this.config.dryRun) {
             elizaLogger.info(`Dry run: would have posted tweet: ${content}`);
             return;
         }
@@ -290,7 +292,7 @@ export class TwitterPublishingService {
     }
 
     private async publishThread(tweets: string[]) {
-        if (this.runtime.getSetting("TWITTER_DRY_RUN") === "true") {
+        if (this.config.dryRun) {
             elizaLogger.info("Dry run: would have posted thread:", tweets);
             return;
         }
