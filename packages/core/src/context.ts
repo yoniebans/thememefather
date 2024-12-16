@@ -56,5 +56,5 @@ export const composeContext = ({
  * const text = addHeader(header, body);
  */
 export const addHeader = (header: string, body: string) => {
-    return body.length > 0 ? `${header ? header + "\n" : header}${body}\n` : "";
+    return body.length > 0 ? `${header ? header + "\n" : header}${body}` : "";
 };

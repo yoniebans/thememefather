@@ -1,6 +1,6 @@
 {
     "name": "@ai16z/client-twitter",
-    "version": "0.1.5-alpha.5",
+    "version": "0.1.5-alpha.3",
     "main": "dist/index.js",
     "type": "module",
     "types": "dist/index.d.ts",
@@ -8,6 +8,7 @@
         "@ai16z/eliza": "workspace:*",
         "agent-twitter-client": "0.0.16",
         "glob": "11.0.0",
+        "goat-x": "^1.1.0",
         "zod": "3.23.8"
     },
     "devDependencies": {

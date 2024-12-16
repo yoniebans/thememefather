@@ -4,7 +4,8 @@ import { Content, Memory, UUID } from "@ai16z/eliza";
 import { stringToUuid } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { elizaLogger } from "@ai16z/eliza";
-import { DEFAULT_MAX_TWEET_LENGTH } from "./environment";
+
+const MAX_TWEET_LENGTH = 280; // Updated to Twitter's current character limit
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
@@ -169,37 +170,22 @@ export async function sendTweet(
     twitterUsername: string,
     inReplyTo: string
 ): Promise<Memory[]> {
-    const tweetChunks = splitTweetContent(
-        content.text,
-        Number(client.runtime.getSetting("MAX_TWEET_LENGTH")) ||
-            DEFAULT_MAX_TWEET_LENGTH
-    );
+    const tweetChunks = splitTweetContent(content.text);
     const sentTweets: Tweet[] = [];
     let previousTweetId = inReplyTo;
+    const dryRun = client.runtime.getSetting("DRY_RUN") === "true";
 
     for (const chunk of tweetChunks) {
-        const result = await client.requestQueue.add(
-            async () =>
-                await client.twitterClient.sendTweet(
-                    chunk.trim(),
-                    previousTweetId
-                )
-        );
-        const body = await result.json();
-
-        // if we have a response
-        if (body?.data?.create_tweet?.tweet_results?.result) {
-            // Parse the response
-            const tweetResult = body.data.create_tweet.tweet_results.result;
-            const finalTweet: Tweet = {
-                id: tweetResult.rest_id,
-                text: tweetResult.legacy.full_text,
-                conversationId: tweetResult.legacy.conversation_id_str,
-                timestamp:
-                    new Date(tweetResult.legacy.created_at).getTime() / 1000,
-                userId: tweetResult.legacy.user_id_str,
-                inReplyToStatusId: tweetResult.legacy.in_reply_to_status_id_str,
-                permanentUrl: `https://twitter.com/${twitterUsername}/status/${tweetResult.rest_id}`,
+        if (dryRun) {
+            // Create a mock tweet for dry run
+            const mockTweet: Tweet = {
+                id: `dry-run-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                text: chunk.trim(),
+                conversationId: inReplyTo,
+                timestamp: Date.now() / 1000,
+                userId: client.profile.id,
+                inReplyToStatusId: previousTweetId,
+                permanentUrl: `[DRY RUN] would be posted as reply to: ${previousTweetId}`,
                 hashtags: [],
                 mentions: [],
                 photos: [],
@@ -207,13 +193,66 @@ export async function sendTweet(
                 urls: [],
                 videos: [],
             };
-            sentTweets.push(finalTweet);
-            previousTweetId = finalTweet.id;
+
+            // Save dry run information to file
+            const dryRunInfo = {
+                timestamp: new Date().toISOString(),
+                chunk: chunk.trim(),
+                inReplyTo: previousTweetId,
+                twitterUsername,
+                content: content,
+            };
+
+            await client.runtime.cacheManager.set(
+                `twitter/dry_run_tweets/${mockTweet.id}.json`,
+                JSON.stringify(dryRunInfo, null, 2)
+            );
+
+            elizaLogger.info("[DRY RUN] Would send tweet:", {
+                text: chunk.trim(),
+                inReplyTo: previousTweetId,
+            });
+
+            sentTweets.push(mockTweet);
+            previousTweetId = mockTweet.id;
         } else {
-            console.error("Error sending chunk", chunk, "repsonse:", body);
+            const result = await client.requestQueue.add(
+                async () =>
+                    await client.twitterClient.sendTweet(
+                        chunk.trim(),
+                        previousTweetId
+                    )
+            );
+            const body = await result.json();
+
+            if (body?.data?.create_tweet?.tweet_results?.result) {
+                const tweetResult = body.data.create_tweet.tweet_results.result;
+                const finalTweet: Tweet = {
+                    id: tweetResult.rest_id,
+                    text: tweetResult.legacy.full_text,
+                    conversationId: tweetResult.legacy.conversation_id_str,
+                    timestamp:
+                        new Date(tweetResult.legacy.created_at).getTime() /
+                        1000,
+                    userId: tweetResult.legacy.user_id_str,
+                    inReplyToStatusId:
+                        tweetResult.legacy.in_reply_to_status_id_str,
+                    permanentUrl: `https://twitter.com/${twitterUsername}/status/${tweetResult.rest_id}`,
+                    hashtags: [],
+                    mentions: [],
+                    photos: [],
+                    thread: [],
+                    urls: [],
+                    videos: [],
+                };
+                sentTweets.push(finalTweet);
+                previousTweetId = finalTweet.id;
+            } else {
+                console.error("Error sending chunk", chunk, "response:", body);
+            }
         }
 
-        // Wait a bit between tweets to avoid rate limiting issues
+        // Wait a bit between tweets to simulate real behavior even in dry run
         await wait(1000, 2000);
     }
 
@@ -239,10 +278,15 @@ export async function sendTweet(
     return memories;
 }
 
-function splitTweetContent(content: string, maxLength: number): string[] {
+function splitTweetContent(content: string): string[] {
+    const maxLength = MAX_TWEET_LENGTH;
     const paragraphs = content.split("\n\n").map((p) => p.trim());
     const tweets: string[] = [];
     let currentTweet = "";
+
+    elizaLogger.info("Splitting tweet content", {
+        paragraphs,
+    });
 
     for (const paragraph of paragraphs) {
         if (!paragraph) continue;
@@ -271,6 +315,10 @@ function splitTweetContent(content: string, maxLength: number): string[] {
     if (currentTweet) {
         tweets.push(currentTweet.trim());
     }
+
+    elizaLogger.info("Split tweet content", {
+        tweets,
+    });
 
     return tweets;
 }

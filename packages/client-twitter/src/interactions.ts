@@ -15,17 +15,20 @@ import {
     elizaLogger,
     getEmbeddingZeroVector,
 } from "@ai16z/eliza";
-import { ClientBase } from "./base";
+import { ClientBase } from "./base.ts";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
 
 export const twitterMessageHandlerTemplate =
-    `
-# Areas of Expertise
+    `# Areas of Expertise
 {{knowledge}}
 
-# About {{agentName}} (@{{twitterUserName}}):
+# Bio for {{agentName}} (@{{twitterUserName}}):
 {{bio}}
+
+# Lore:
 {{lore}}
+
+# Topics:
 {{topics}}
 
 {{providers}}
@@ -39,7 +42,7 @@ Recent interactions between {{agentName}} and other users:
 
 {{recentPosts}}
 
-# Task: Generate a post/reply in the voice, style and perspective of {{agentName}} (@{{twitterUserName}}) while using the thread of tweets as additional context:
+# Task: Generate a post/reply in the voice, style and perspective of {{agentName}} (@{{twitterUserName}}) while using the thread of tweets as additional context.
 Current Post:
 {{currentPost}}
 
@@ -48,10 +51,7 @@ Thread of Tweets You Are Replying To:
 
 {{actions}}
 
-# Task: Generate a post in the voice, style and perspective of {{agentName}} (@{{twitterUserName}}). You MUST include an action if the current post text includes a prompt that is similar to one of the available actions mentioned here:
-{{actionNames}}
-
-Here is the current post text again. Remember to include an action if the current post text includes a prompt that asks for one of the available actions mentioned above (does not need to be exact):
+# Task: Generate a post in the voice, style and perspective of {{agentName}} (@{{twitterUserName}}). Include an action, if appropriate. {{actionNames}}:
 {{currentPost}}
 ` + messageCompletionFooter;
 
@@ -63,7 +63,7 @@ Response options are RESPOND, IGNORE and STOP .
 {{agentName}} should respond to messages that are directed at them, or participate in conversations that are interesting or relevant to their background, IGNORE messages that are irrelevant to them, and should STOP if the conversation is concluded.
 
 {{agentName}} is in a room with other users and wants to be conversational, but not annoying.
-{{agentName}} must RESPOND to messages that are directed at them, a command towards them, or participate in conversations that are interesting or relevant to their background.
+{{agentName}} should RESPOND to messages that are directed at them, or participate in conversations that are interesting or relevant to their background.
 If a message is not interesting or relevant, {{agentName}} should IGNORE.
 Unless directly RESPONDing to a user, {{agentName}} should IGNORE messages that are very short or do not contain much information.
 If a user asks {{agentName}} to stop talking, {{agentName}} should STOP.
@@ -144,7 +144,7 @@ export class TwitterInteractionClient {
 
                     if (existingResponse) {
                         elizaLogger.log(
-                            `Already responded to tweet ${tweet.id}, skipping`
+                            `Already responded to tweet from @${tweet.username}: "${tweet.text.substring(0, 50)}..." (ID: ${tweet.id})`
                         );
                         continue;
                     }
@@ -172,18 +172,24 @@ export class TwitterInteractionClient {
                         this.client
                     );
 
-                    const message = {
-                        content: { text: tweet.text },
-                        agentId: this.runtime.agentId,
-                        userId: userIdUUID,
-                        roomId,
-                    };
+                    // Before creating message, validate content
+                    if (tweet.text) {
+                        const message = {
+                            content: {
+                                text: tweet.text,
+                                action: "", // Initialize with empty string but not both empty
+                            },
+                            agentId: this.runtime.agentId,
+                            userId: userIdUUID,
+                            roomId,
+                        };
 
-                    await this.handleTweet({
-                        tweet,
-                        message,
-                        thread,
-                    });
+                        await this.handleTweet({
+                            tweet,
+                            message,
+                            thread,
+                        });
+                    }
 
                     // Update the last checked tweet ID after processing each tweet
                     this.client.lastCheckedTweetId = BigInt(tweet.id);
@@ -294,7 +300,7 @@ export class TwitterInteractionClient {
         const shouldRespond = await generateShouldRespond({
             runtime: this.runtime,
             context: shouldRespondContext,
-            modelClass: ModelClass.MEDIUM,
+            modelClass: ModelClass.LARGE,
         });
 
         // Promise<"RESPOND" | "IGNORE" | "STOP" | null> {

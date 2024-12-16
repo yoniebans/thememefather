@@ -1,8 +1,6 @@
 import { IAgentRuntime } from "@ai16z/eliza";
 import { z } from "zod";
 
-export const DEFAULT_MAX_TWEET_LENGTH = 280;
-
 export const twitterEnvSchema = z.object({
     TWITTER_DRY_RUN: z
         .string()
@@ -11,10 +9,32 @@ export const twitterEnvSchema = z.object({
     TWITTER_PASSWORD: z.string().min(1, "Twitter password is required"),
     TWITTER_EMAIL: z.string().email("Valid Twitter email is required"),
     TWITTER_COOKIES: z.string().optional(),
-    MAX_TWEET_LENGTH: z
+    TWITTER_2FA_SECRET: z.string().optional(),
+    // Publishing config as individual env vars
+    TWITTER_ALLOW_THREADS: z
         .string()
-        .pipe(z.coerce.number().min(0).int())
-        .default(DEFAULT_MAX_TWEET_LENGTH.toString()),
+        .optional()
+        .transform((val) => val?.toLowerCase() === "true"),
+    TWITTER_PRESERVE_FORMATTING: z
+        .string()
+        .optional()
+        .transform((val) => val?.toLowerCase() === "true"),
+    TWITTER_MAX_LENGTH: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 280)),
+    TWITTER_POST_INTERVAL_MIN: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 60)),
+    TWITTER_POST_INTERVAL_MAX: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 90)),
+    TWITTER_IMMEDIATE_FIRST_POST: z
+        .string()
+        .optional()
+        .transform((val) => val?.toLowerCase() === "true"),
 });
 
 export type TwitterConfig = z.infer<typeof twitterEnvSchema>;
@@ -40,10 +60,27 @@ export async function validateTwitterConfig(
             TWITTER_COOKIES:
                 runtime.getSetting("TWITTER_COOKIES") ||
                 process.env.TWITTER_COOKIES,
-            MAX_TWEET_LENGTH:
-                runtime.getSetting("MAX_TWEET_LENGTH") ||
-                process.env.MAX_TWEET_LENGTH ||
-                DEFAULT_MAX_TWEET_LENGTH.toString(),
+            TWITTER_2FA_SECRET:
+                runtime.getSetting("TWITTER_2FA_SECRET") ||
+                process.env.TWITTER_2FA_SECRET,
+            TWITTER_ALLOW_THREADS:
+                runtime.getSetting("TWITTER_ALLOW_THREADS") ||
+                process.env.TWITTER_ALLOW_THREADS,
+            TWITTER_PRESERVE_FORMATTING:
+                runtime.getSetting("TWITTER_PRESERVE_FORMATTING") ||
+                process.env.TWITTER_PRESERVE_FORMATTING,
+            TWITTER_MAX_LENGTH:
+                runtime.getSetting("TWITTER_MAX_LENGTH") ||
+                process.env.TWITTER_MAX_LENGTH,
+            TWITTER_POST_INTERVAL_MIN:
+                runtime.getSetting("TWITTER_POST_INTERVAL_MIN") ||
+                process.env.TWITTER_POST_INTERVAL_MIN,
+            TWITTER_POST_INTERVAL_MAX:
+                runtime.getSetting("TWITTER_POST_INTERVAL_MAX") ||
+                process.env.TWITTER_POST_INTERVAL_MAX,
+            TWITTER_IMMEDIATE_FIRST_POST:
+                runtime.getSetting("TWITTER_IMMEDIATE_FIRST_POST") ||
+                process.env.TWITTER_IMMEDIATE_FIRST_POST,
         };
 
         return twitterEnvSchema.parse(config);
@@ -58,4 +95,20 @@ export async function validateTwitterConfig(
         }
         throw error;
     }
+}
+
+/**
+ * Helper function to get publishing config from validated environment
+ */
+export function getPublishingConfig(config: TwitterConfig) {
+    return {
+        processingOptions: {
+            allowThreads: config.TWITTER_ALLOW_THREADS ?? false,
+            preserveFormatting: config.TWITTER_PRESERVE_FORMATTING ?? false,
+            maxLength: config.TWITTER_MAX_LENGTH ?? 280,
+        },
+        postIntervalMin: config.TWITTER_POST_INTERVAL_MIN ?? 60,
+        postIntervalMax: config.TWITTER_POST_INTERVAL_MAX ?? 90,
+        immediateFirstPost: config.TWITTER_IMMEDIATE_FIRST_POST ?? false,
+    };
 }

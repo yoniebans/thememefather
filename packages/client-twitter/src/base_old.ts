@@ -153,63 +153,44 @@ export class ClientBase extends EventEmitter {
     }
 
     async init() {
+        //test
         const username = this.runtime.getSetting("TWITTER_USERNAME");
+
         if (!username) {
             throw new Error("Twitter username not configured");
         }
-
-        elizaLogger.log("Initializing Twitter client for", username);
-
-        // First try to restore cookies and check if they're still valid
-        let isLoggedIn = false;
-
+        // Check for Twitter cookies
         if (this.runtime.getSetting("TWITTER_COOKIES")) {
-            elizaLogger.debug(
-                "Found cookies in settings, attempting to restore session"
-            );
             const cookiesArray = JSON.parse(
                 this.runtime.getSetting("TWITTER_COOKIES")
             );
-            await this.setCookiesFromArray(cookiesArray);
-            isLoggedIn = await this.twitterClient.isLoggedIn();
-        }
 
-        if (!isLoggedIn) {
-            elizaLogger.debug("Checking cached cookies");
+            await this.setCookiesFromArray(cookiesArray);
+        } else {
             const cachedCookies = await this.getCachedCookies(username);
             if (cachedCookies) {
-                elizaLogger.debug(
-                    "Found cached cookies, attempting to restore session"
-                );
                 await this.setCookiesFromArray(cachedCookies);
-                isLoggedIn = await this.twitterClient.isLoggedIn();
             }
         }
 
-        // Only perform login if cookie restoration failed
-        if (!isLoggedIn) {
-            elizaLogger.log("No valid session found, performing fresh login");
-            while (true) {
-                await this.twitterClient.login(
-                    username,
-                    this.runtime.getSetting("TWITTER_PASSWORD"),
-                    this.runtime.getSetting("TWITTER_EMAIL"),
-                    this.runtime.getSetting("TWITTER_2FA_SECRET") || undefined
-                );
+        elizaLogger.log("Waiting for Twitter login");
+        while (true) {
+            await this.twitterClient.login(
+                username,
+                this.runtime.getSetting("TWITTER_PASSWORD"),
+                this.runtime.getSetting("TWITTER_EMAIL"),
+                this.runtime.getSetting("TWITTER_2FA_SECRET") || undefined
+            );
 
-                if (await this.twitterClient.isLoggedIn()) {
-                    const cookies = await this.twitterClient.getCookies();
-                    await this.cacheCookies(username, cookies);
-                    break;
-                }
-
-                elizaLogger.error(
-                    "Failed to login to Twitter, trying again..."
-                );
-                await new Promise((resolve) => setTimeout(resolve, 2000));
+            if (await this.twitterClient.isLoggedIn()) {
+                const cookies = await this.twitterClient.getCookies();
+                await this.cacheCookies(username, cookies);
+                break;
             }
-        } else {
-            elizaLogger.log("Successfully restored previous session");
+
+            elizaLogger.error("Failed to login to Twitter trying again...");
+
+            await new Promise((resolve) => setTimeout(resolve, 2000));
         }
 
         // Initialize Twitter profile
@@ -237,8 +218,8 @@ export class ClientBase extends EventEmitter {
         await this.populateTimeline();
     }
 
-    async fetchAgentTweets(count: number): Promise<Tweet[]> {
-        elizaLogger.debug("fetching agent tweets");
+    async fetchHomeTimeline(count: number): Promise<Tweet[]> {
+        elizaLogger.debug("fetching home timeline");
         const homeTimeline = await this.twitterClient.getUserTweets(
             this.profile.id,
             count
@@ -247,38 +228,27 @@ export class ClientBase extends EventEmitter {
     }
 
     async fetchFeedTimeline(count: number): Promise<string> {
-        elizaLogger.debug("fetching feed timeline");
-        const homeTimeline = await this.twitterClient.fetchHomeTimeline(
-            count,
-            []
-        );
+        elizaLogger.debug("fetching home timeline");
+        const homeTimeline = await this.twitterClient.fetchHomeTimeline(count, []);
         return homeTimeline
-            .filter((tweet) => tweet.text || tweet.legacy?.full_text)
+            .filter(tweet => tweet.text || tweet.legacy?.full_text)
             .sort((a, b) => {
-                const timestampA = new Date(
-                    a.createdAt ?? a.legacy?.created_at
-                ).getTime();
-                const timestampB = new Date(
-                    b.createdAt ?? b.legacy?.created_at
-                ).getTime();
+                const timestampA = new Date(a.createdAt ?? a.legacy?.created_at).getTime();
+                const timestampB = new Date(b.createdAt ?? b.legacy?.created_at).getTime();
                 return timestampB - timestampA;
             })
             .slice(0, count)
-            .map(
-                (tweet) =>
-                    `@${tweet.username || tweet.core?.user_results?.result?.legacy?.screen_name}: ${tweet.text ?? tweet.legacy?.full_text ?? ""}`
+            .map(tweet =>
+                `@${tweet.username || tweet.core?.user_results?.result?.legacy?.screen_name}: ${tweet.text ?? tweet.legacy?.full_text ?? ''}`
             )
-            .join("\n");
+            .join('\n');
     }
 
     async fetchTimelineForActions(count: number): Promise<Tweet[]> {
         elizaLogger.debug("fetching timeline for actions");
-        const homeTimeline = await this.twitterClient.fetchHomeTimeline(
-            count,
-            []
-        );
+        const homeTimeline = await this.twitterClient.fetchHomeTimeline(count, []);
 
-        return homeTimeline.map((tweet) => ({
+        return homeTimeline.map(tweet => ({
             id: tweet.rest_id,
             name: tweet.core?.user_results?.result?.legacy?.name,
             username: tweet.core?.user_results?.result?.legacy?.screen_name,
@@ -290,16 +260,10 @@ export class ClientBase extends EventEmitter {
             permanentUrl: `https://twitter.com/${tweet.core?.user_results?.result?.legacy?.screen_name}/status/${tweet.rest_id}`,
             hashtags: tweet.legacy?.entities?.hashtags || [],
             mentions: tweet.legacy?.entities?.user_mentions || [],
-            photos:
-                tweet.legacy?.entities?.media?.filter(
-                    (media) => media.type === "photo"
-                ) || [],
+            photos: tweet.legacy?.entities?.media?.filter(media => media.type === "photo") || [],
             thread: tweet.thread || [],
             urls: tweet.legacy?.entities?.urls || [],
-            videos:
-                tweet.legacy?.entities?.media?.filter(
-                    (media) => media.type === "video"
-                ) || [],
+            videos: tweet.legacy?.entities?.media?.filter(media => media.type === "video") || []
         }));
     }
 
@@ -447,6 +411,8 @@ export class ClientBase extends EventEmitter {
                         break;
                     }
 
+
+
                     await this.runtime.messageManager.createMemory({
                         id: stringToUuid(tweet.id + "-" + this.runtime.agentId),
                         userId,
@@ -467,7 +433,7 @@ export class ClientBase extends EventEmitter {
             }
         }
 
-        const timeline = await this.fetchAgentTweets(cachedTimeline ? 10 : 50);
+        const timeline = await this.fetchHomeTimeline(cachedTimeline ? 10 : 50);
 
         // Get the most recent 20 mentions and interactions
         const mentionsAndInteractions = await this.fetchSearchTweets(
@@ -510,7 +476,7 @@ export class ClientBase extends EventEmitter {
                 )
         );
 
-        elizaLogger.debug("Processing tweets", {
+        elizaLogger.debug({
             processingTweets: tweetsToSave.map((tweet) => tweet.id).join(","),
         });
 
@@ -579,53 +545,15 @@ export class ClientBase extends EventEmitter {
     }
 
     async setCookiesFromArray(cookiesArray: any[]) {
-        elizaLogger.debug("Setting cookies from array", {
-            cookieCount: cookiesArray?.length || 0,
-            hasValue: Boolean(cookiesArray[0]?.value),
-        });
-
-        // Handle case where cookies are nested in a value array
-        const cookies = Array.isArray(cookiesArray[0]?.value)
-            ? cookiesArray[0].value
-            : cookiesArray;
-
-        elizaLogger.debug("Processing cookies", {
-            count: cookies?.length || 0,
-        });
-
-        const cookieStrings = cookies
-            .map((cookie) => {
-                // Ensure all required fields are present
-                if (!cookie.key || !cookie.value) {
-                    elizaLogger.warn(
-                        "Invalid cookie format - missing key or value"
-                    );
-                    return null;
-                }
-
-                const cookieString = `${cookie.key}=${cookie.value}; Domain=${cookie.domain}; Path=${cookie.path}; ${
+        const cookieStrings = cookiesArray.map(
+            (cookie) =>
+                `${cookie.key}=${cookie.value}; Domain=${cookie.domain}; Path=${cookie.path}; ${
                     cookie.secure ? "Secure" : ""
                 }; ${cookie.httpOnly ? "HttpOnly" : ""}; SameSite=${
-                    cookie.sameSite?.toLowerCase() || "Lax"
-                }`;
-
-                elizaLogger.debug(`Processing cookie: ${cookie.key}`);
-                return cookieString;
-            })
-            .filter(Boolean);
-
-        if (cookieStrings.length === 0) {
-            elizaLogger.warn("No valid cookies to set");
-            return;
-        }
-
-        try {
-            await this.twitterClient.setCookies(cookieStrings);
-            elizaLogger.log(`Successfully set ${cookieStrings.length} cookies`);
-        } catch (error) {
-            elizaLogger.error("Error setting cookies:", error);
-            throw error;
-        }
+                    cookie.sameSite || "Lax"
+                }`
+        );
+        await this.twitterClient.setCookies(cookieStrings);
     }
 
     async saveRequestMessage(message: Memory, state: State) {
@@ -700,45 +628,16 @@ export class ClientBase extends EventEmitter {
     }
 
     async getCachedCookies(username: string) {
-        elizaLogger.debug("Getting cached cookies for user:", username);
-
-        try {
-            const cookies = await this.runtime.cacheManager.get<any[]>(
-                `twitter/${username}/cookies`
-            );
-
-            elizaLogger.debug("Retrieved cached cookies", {
-                found: Boolean(cookies),
-                count: cookies?.length || 0,
-            });
-            return cookies;
-        } catch (error) {
-            elizaLogger.error("Error getting cached cookies:", error);
-            throw error;
-        }
+        return await this.runtime.cacheManager.get<any[]>(
+            `twitter/${username}/cookies`
+        );
     }
 
     async cacheCookies(username: string, cookies: any[]) {
-        elizaLogger.debug("Caching cookies for user:", username);
-
-        const cookiesToCache = Array.isArray(cookies[0]?.value)
-            ? cookies[0].value
-            : cookies;
-
-        elizaLogger.debug("Caching cookies", {
-            count: cookiesToCache?.length || 0,
-        });
-
-        try {
-            await this.runtime.cacheManager.set(
-                `twitter/${username}/cookies`,
-                cookiesToCache
-            );
-            elizaLogger.log("Successfully cached cookies");
-        } catch (error) {
-            elizaLogger.error("Error caching cookies:", error);
-            throw error;
-        }
+        await this.runtime.cacheManager.set(
+            `twitter/${username}/cookies`,
+            cookies
+        );
     }
 
     async getCachedProfile(username: string) {
