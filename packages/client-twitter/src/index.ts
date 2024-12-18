@@ -30,22 +30,42 @@ export class TwitterClient extends EventEmitter {
         const config = await validateTwitterConfig(this.runtime);
         const publishingConfig = getPublishingConfig(config);
         const engagementConfig = getEngagementConfig(config);
-
-        this.publishingService = new TwitterPublishingService(
-            this.client,
-            this.runtime,
-            publishingConfig
-        );
-
-        this.engagementService = new TwitterEngagementService(
-            this.client,
-            this.runtime,
-            engagementConfig
-        );
-
+        // Always initialize the client
         await this.client.init();
-        await this.publishingService.start();
-        await this.engagementService.start();
+
+        // Only initialize and start services if enabled
+        if (
+            publishingConfig.enabledNormal ||
+            publishingConfig.enabledLunarCrush
+        ) {
+            elizaLogger.log(
+                "Initializing publishing service with config:",
+                publishingConfig
+            );
+            this.publishingService = new TwitterPublishingService(
+                this.client,
+                this.runtime,
+                publishingConfig
+            );
+            await this.publishingService.start();
+            elizaLogger.success("Twitter publishing service started");
+        } else {
+            elizaLogger.info("Twitter publishing service disabled");
+        }
+
+        if (engagementConfig.enabled) {
+            elizaLogger.log("Initializing engagement service");
+            this.engagementService = new TwitterEngagementService(
+                this.client,
+                this.runtime,
+                engagementConfig
+            );
+            await this.engagementService.start();
+            elizaLogger.success("Twitter engagement service started");
+        } else {
+            elizaLogger.info("Twitter engagement service disabled");
+        }
+
         elizaLogger.success("Twitter client initialized");
     }
 

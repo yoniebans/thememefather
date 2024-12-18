@@ -13,98 +13,9 @@ import {
 import { ClientBase } from "./base";
 import { buildConversationThread } from "./utils";
 import { TweetProcessor } from "./processor";
-
-const twitterActionTemplate = `
-# INSTRUCTIONS: Analyze the following tweet and determine which actions {{agentName}} (@{{twitterUserName}}) should take. Do not comment. Just respond with the appropriate action tags.
-About {{agentName}} (@{{twitterUserName}}):
-{{bio}}
-{{lore}}
-
-Response Guidelines:
-- {{agentName}} is selective about engagement and doesn't want to be annoying
-- IMPORTANT: You must choose only ONE of these three actions: retweet, quote tweet, or reply
-- The chosen action must meet its high quality threshold
-- Direct mentions get very high priority for replies and quote tweets
-- Avoid engaging with:
-  * Short or low-effort content
-  * Topics outside {{agentName}}'s interests
-  * Repetitive conversations
-
-Available Actions:
-1. Primary Action (CHOOSE ONLY ONE):
-   [RETWEET] - Exceptionally based content that perfectly aligns with character (very rare, 9/10)
-   [QUOTE] - Rare opportunity to add significant value (very high threshold, 8/10)
-   [REPLY] - Highly memetic response opportunity (very high threshold, 9/10)
-
-2. Optional Secondary Action:
-   [LIKE] - Content resonates with {{agentName}}'s interests (medium threshold, 9.5/10)
-   Note: Like can be combined with any primary action or used alone
-
-Current Tweet:
-{{currentTweet}}
-
-# INSTRUCTIONS: Choose at most one primary action (retweet/quote/reply) and optionally like. Actions must meet their thresholds.
-
-Respond with a JSON markdown block containing only the action decisions:
-\`\`\`json
-{
-    "like": true | false,
-    "retweet": true | false,
-    "quote": true | false,
-    "reply": true | false
-}
-\`\`\``;
-
-const twitterReplyTemplate = `
-# INSTRUCTIONS: Craft a reply tweet as {{agentName}} (@{{twitterUserName}}) that engages with the content
-
-About {{agentName}}:
-{{bio}}
-{{lore}}
-
-## Conversation Context:
-{{formattedConversation}}
-{{imageContext}}
-
-## Voice Guidelines:
-- Maintain {{agentName}}'s unique perspective and intelligence
-- Be concise and impactful - max 280 characters
-- Add meaningful value or insight
-- Keep responses culturally relevant
-- Match the conversation's energy level
-- Include @mentions only when adding value
-
-## Recent Voice Reference:
-{{agentsTweets}}
-
-TASK: Write a reply tweet that feels authentic to {{agentName}}'s character while engaging meaningfully with the conversation. The reply should add value and maintain appropriate tone.
-
-Your response should be the exact text to be tweeted, with no additional formatting or explanation.`;
-
-const twitterQuoteTemplate = `
-# INSTRUCTIONS: Craft a quote tweet as {{agentName}} (@{{twitterUserName}}) that amplifies while adding unique perspective
-
-About {{agentName}}:
-{{bio}}
-{{lore}}
-
-## Original Content:
-{{currentPost}}
-{{imageContext}}
-
-## Voice Guidelines:
-- Maintain {{agentName}}'s unique perspective and intelligence
-- Be concise and impactful - max 280 characters
-- Add significant value beyond the original tweet
-- Provide unique insight or perspective
-- Make the quote relevant to your audience
-
-## Recent Voice Reference:
-{{agentsTweets}}
-
-TASK: Write a quote tweet that amplifies the original content while adding {{agentName}}'s unique perspective and value. The quote should feel natural and enhance the original message.
-
-Your response should be the exact text to be tweeted, with no additional formatting or explanation.`;
+import { twitterActionTemplate } from "./prompts/engagement/action";
+import { twitterReplyTemplate } from "./prompts/engagement/anthropic/reply";
+import { twitterQuoteTemplate } from "./prompts/engagement/quote";
 
 export interface EngagementServiceConfig {
     processingInterval: number; // How often to check timeline in ms
@@ -135,7 +46,6 @@ export class TwitterEngagementService {
 
     async start() {
         if (!this.client.profile) {
-            // TODO: Create a semaphore to prevent multiple instances of the client from being initialized
             await this.client.init();
         }
 
@@ -185,6 +95,10 @@ export class TwitterEngagementService {
             const timeline = await this.client.fetchTimelineForActions(
                 this.config.timelineDepth
             );
+            elizaLogger.debug(
+                "fetched timeline for actions; length:",
+                timeline.length
+            );
             const results = [];
 
             for (const tweet of timeline) {
@@ -231,7 +145,7 @@ export class TwitterEngagementService {
                 userId: this.runtime.agentId,
                 roomId,
                 agentId: this.runtime.agentId,
-                content: { text: "", action: "" },
+                content: { text: tweet.text, action: "" },
             },
             {
                 twitterUserName: this.runtime.getSetting("TWITTER_USERNAME"),
@@ -247,7 +161,7 @@ export class TwitterEngagementService {
         return await generateObjectDEPRECATED({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.SMALL,
+            modelClass: ModelClass.MEDIUM,
         });
     }
 

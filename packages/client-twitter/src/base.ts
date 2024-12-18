@@ -17,11 +17,18 @@ import {
     Tweet,
 } from "agent-twitter-client";
 import { EventEmitter } from "events";
+import { sampleSize } from "lodash";
 
 export function extractAnswer(text: string): string {
     const startIndex = text.indexOf("Answer: ") + 8;
     const endIndex = text.indexOf("<|endoftext|>", 11);
     return text.slice(startIndex, endIndex);
+}
+
+interface InitializationLock {
+    promise: Promise<void>;
+    resolve: () => void;
+    reject: (error: Error) => void;
 }
 
 type TwitterProfile = {
@@ -84,6 +91,8 @@ class RequestQueue {
 
 export class ClientBase extends EventEmitter {
     static _twitterClients: { [accountIdentifier: string]: Scraper } = {};
+    private static _initializationLock: InitializationLock | null = null;
+    private static _initialized: boolean = false;
     twitterClient: Scraper;
     runtime: IAgentRuntime;
     directions: string;
@@ -96,12 +105,61 @@ export class ClientBase extends EventEmitter {
     profile: TwitterProfile | null;
 
     async cacheTweet(tweet: Tweet): Promise<void> {
-        if (!tweet) {
-            console.warn("Tweet is undefined, skipping cache");
-            return;
-        }
+        try {
+            if (!tweet) {
+                elizaLogger.warn("Tweet is undefined, skipping cache");
+                return;
+            }
 
-        this.runtime.cacheManager.set(`twitter/tweets/${tweet.id}`, tweet);
+            elizaLogger.debug(`Attempting to cache tweet ${tweet.id}`, {
+                tweetId: tweet.id,
+                hasThread: Boolean(tweet.thread?.length),
+                threadLength: tweet.thread?.length,
+            });
+
+            // Create a sanitized version of the tweet without circular references
+            const sanitizedTweet = {
+                id: tweet.id,
+                name: tweet.name,
+                username: tweet.username,
+                text: tweet.text,
+                inReplyToStatusId: tweet.inReplyToStatusId,
+                timestamp: tweet.timestamp,
+                userId: tweet.userId,
+                conversationId: tweet.conversationId,
+                permanentUrl: tweet.permanentUrl,
+                hashtags: tweet.hashtags,
+                mentions: tweet.mentions,
+                photos: tweet.photos,
+                // Only include essential thread info, not the full objects
+                thread: tweet.thread?.map((t) => ({
+                    id: t.id,
+                    text: t.text,
+                    timestamp: t.timestamp,
+                })),
+                urls: tweet.urls,
+                videos: tweet.videos,
+            };
+
+            elizaLogger.debug(`Sanitized tweet ${tweet.id} for caching`, {
+                sanitizedKeys: Object.keys(sanitizedTweet),
+            });
+
+            await this.runtime.cacheManager.set(
+                `twitter/tweets/${tweet.id}`,
+                sanitizedTweet
+            );
+
+            elizaLogger.debug(`Successfully cached tweet ${tweet.id}`);
+        } catch (error) {
+            elizaLogger.error(`Failed to cache tweet ${tweet?.id}:`, {
+                error: error.message,
+                stack: error.stack,
+                tweet: JSON.stringify(tweet, null, 2).slice(0, 500), // Log first 500 chars of tweet
+            });
+            // Don't throw the error - just log it and continue
+            // This prevents the application from crashing
+        }
     }
 
     async getCachedTweet(tweetId: string): Promise<Tweet | undefined> {
@@ -113,18 +171,35 @@ export class ClientBase extends EventEmitter {
     }
 
     async getTweet(tweetId: string): Promise<Tweet> {
-        const cachedTweet = await this.getCachedTweet(tweetId);
+        try {
+            const cachedTweet = await this.getCachedTweet(tweetId);
 
-        if (cachedTweet) {
-            return cachedTweet;
+            if (cachedTweet) {
+                elizaLogger.debug(`Retrieved tweet ${tweetId} from cache`);
+                return cachedTweet;
+            }
+
+            elizaLogger.debug(`Fetching tweet ${tweetId} from Twitter`);
+            const tweet = await this.requestQueue.add(() =>
+                this.twitterClient.getTweet(tweetId)
+            );
+
+            // Cache the tweet but don't await it - let it happen in the background
+            this.cacheTweet(tweet).catch((error) => {
+                elizaLogger.error(
+                    `Background caching failed for tweet ${tweetId}:`,
+                    error
+                );
+            });
+
+            return tweet;
+        } catch (error) {
+            elizaLogger.error(`Failed to get tweet ${tweetId}:`, {
+                error: error.message,
+                stack: error.stack,
+            });
+            throw error; // Still throw the error as this is a core functionality
         }
-
-        const tweet = await this.requestQueue.add(() =>
-            this.twitterClient.getTweet(tweetId)
-        );
-
-        await this.cacheTweet(tweet);
-        return tweet;
     }
 
     callback: (self: ClientBase) => any = null;
@@ -153,89 +228,154 @@ export class ClientBase extends EventEmitter {
             this.runtime.character.style.post.join();
     }
 
+    private static createInitializationLock(): InitializationLock {
+        let resolveFn: () => void;
+        let rejectFn: (error: Error) => void;
+
+        const promise = new Promise<void>((resolve, reject) => {
+            resolveFn = resolve;
+            rejectFn = reject;
+        });
+
+        return {
+            promise,
+            resolve: resolveFn!,
+            reject: rejectFn!,
+        };
+    }
+
+    private async waitForInitialization(): Promise<void> {
+        if (ClientBase._initialized) {
+            return;
+        }
+
+        if (!ClientBase._initializationLock) {
+            ClientBase._initializationLock =
+                ClientBase.createInitializationLock();
+        }
+
+        await ClientBase._initializationLock.promise;
+    }
+
     async init() {
-        const username = this.runtime.getSetting("TWITTER_USERNAME");
-        if (!username) {
-            throw new Error("Twitter username not configured");
+        // If already initialized, just wait for completion and return
+        if (ClientBase._initialized) {
+            elizaLogger.debug("Twitter client already initialized");
+            return;
         }
 
-        elizaLogger.log("Initializing Twitter client for", username);
-
-        // First try to restore cookies and check if they're still valid
-        let isLoggedIn = false;
-
-        if (this.runtime.getSetting("TWITTER_COOKIES")) {
+        // If initialization is in progress, wait for it
+        if (ClientBase._initializationLock) {
             elizaLogger.debug(
-                "Found cookies in settings, attempting to restore session"
+                "Twitter client initialization in progress, waiting"
             );
-            const cookiesArray = JSON.parse(
-                this.runtime.getSetting("TWITTER_COOKIES")
-            );
-            await this.setCookiesFromArray(cookiesArray);
-            isLoggedIn = await this.twitterClient.isLoggedIn();
+            await this.waitForInitialization();
+            return;
         }
 
-        if (!isLoggedIn) {
-            elizaLogger.debug("Checking cached cookies");
-            const cachedCookies = await this.getCachedCookies(username);
-            if (cachedCookies) {
+        // Create initialization lock
+        ClientBase._initializationLock = ClientBase.createInitializationLock();
+
+        try {
+            const username = this.runtime.getSetting("TWITTER_USERNAME");
+            if (!username) {
+                throw new Error("Twitter username not configured");
+            }
+
+            elizaLogger.log("Initializing Twitter client for", username);
+
+            // First try to restore cookies and check if they're still valid
+            let isLoggedIn = false;
+
+            if (this.runtime.getSetting("TWITTER_COOKIES")) {
                 elizaLogger.debug(
-                    "Found cached cookies, attempting to restore session"
+                    "Found cookies in settings, attempting to restore session"
                 );
-                await this.setCookiesFromArray(cachedCookies);
+                const cookiesArray = JSON.parse(
+                    this.runtime.getSetting("TWITTER_COOKIES")
+                );
+                await this.setCookiesFromArray(cookiesArray);
                 isLoggedIn = await this.twitterClient.isLoggedIn();
             }
-        }
 
-        // Only perform login if cookie restoration failed
-        if (!isLoggedIn) {
-            elizaLogger.log("No valid session found, performing fresh login");
-            while (true) {
-                await this.twitterClient.login(
-                    username,
-                    this.runtime.getSetting("TWITTER_PASSWORD"),
-                    this.runtime.getSetting("TWITTER_EMAIL"),
-                    this.runtime.getSetting("TWITTER_2FA_SECRET") || undefined
-                );
-
-                if (await this.twitterClient.isLoggedIn()) {
-                    const cookies = await this.twitterClient.getCookies();
-                    await this.cacheCookies(username, cookies);
-                    break;
+            if (!isLoggedIn) {
+                elizaLogger.debug("Checking cached cookies");
+                const cachedCookies = await this.getCachedCookies(username);
+                if (cachedCookies) {
+                    elizaLogger.debug(
+                        "Found cached cookies, attempting to restore session"
+                    );
+                    await this.setCookiesFromArray(cachedCookies);
+                    isLoggedIn = await this.twitterClient.isLoggedIn();
                 }
-
-                elizaLogger.error(
-                    "Failed to login to Twitter, trying again..."
-                );
-                await new Promise((resolve) => setTimeout(resolve, 2000));
             }
-        } else {
-            elizaLogger.log("Successfully restored previous session");
+
+            // Only perform login if cookie restoration failed
+            if (!isLoggedIn) {
+                elizaLogger.log(
+                    "No valid session found, performing fresh login"
+                );
+                while (true) {
+                    await this.twitterClient.login(
+                        username,
+                        this.runtime.getSetting("TWITTER_PASSWORD"),
+                        this.runtime.getSetting("TWITTER_EMAIL"),
+                        this.runtime.getSetting("TWITTER_2FA_SECRET") ||
+                            undefined
+                    );
+
+                    if (await this.twitterClient.isLoggedIn()) {
+                        const cookies = await this.twitterClient.getCookies();
+                        await this.cacheCookies(username, cookies);
+                        break;
+                    }
+
+                    elizaLogger.error(
+                        "Failed to login to Twitter, trying again..."
+                    );
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                }
+            } else {
+                elizaLogger.log("Successfully restored previous session");
+            }
+
+            // Initialize Twitter profile
+            this.profile = await this.fetchProfile(username);
+
+            if (this.profile) {
+                elizaLogger.log("Twitter user ID:", this.profile.id);
+                elizaLogger.log(
+                    "Twitter loaded:",
+                    JSON.stringify(this.profile, null, 10)
+                );
+                // Store profile info for use in responses
+                this.runtime.character.twitterProfile = {
+                    id: this.profile.id,
+                    username: this.profile.username,
+                    screenName: this.profile.screenName,
+                    bio: this.profile.bio,
+                    nicknames: this.profile.nicknames,
+                };
+            } else {
+                throw new Error("Failed to load profile");
+            }
+
+            await this.loadLatestCheckedTweetId();
+            await this.populateTimeline();
+
+            // Mark as initialized and resolve the lock
+            ClientBase._initialized = true;
+            ClientBase._initializationLock.resolve();
+        } catch (error) {
+            // If initialization fails, reject the lock and clean up
+            ClientBase._initializationLock?.reject(error as Error);
+            ClientBase._initialized = false;
+            ClientBase._initializationLock = null;
+            throw error;
+        } finally {
+            // Clean up the lock
+            ClientBase._initializationLock = null;
         }
-
-        // Initialize Twitter profile
-        this.profile = await this.fetchProfile(username);
-
-        if (this.profile) {
-            elizaLogger.log("Twitter user ID:", this.profile.id);
-            elizaLogger.log(
-                "Twitter loaded:",
-                JSON.stringify(this.profile, null, 10)
-            );
-            // Store profile info for use in responses
-            this.runtime.character.twitterProfile = {
-                id: this.profile.id,
-                username: this.profile.username,
-                screenName: this.profile.screenName,
-                bio: this.profile.bio,
-                nicknames: this.profile.nicknames,
-            };
-        } else {
-            throw new Error("Failed to load profile");
-        }
-
-        await this.loadLatestCheckedTweetId();
-        await this.populateTimeline();
     }
 
     async generateEmbedding(text: string): Promise<number[]> {
@@ -295,7 +435,8 @@ export class ClientBase extends EventEmitter {
             count,
             []
         );
-        return homeTimeline
+
+        const filteredAndOrdered = homeTimeline
             .filter((tweet) => tweet.text || tweet.legacy?.full_text)
             .sort((a, b) => {
                 const timestampA = new Date(
@@ -305,8 +446,15 @@ export class ClientBase extends EventEmitter {
                     b.createdAt ?? b.legacy?.created_at
                 ).getTime();
                 return timestampB - timestampA;
-            })
-            .slice(0, count)
+            });
+
+        // Take only up to count entries after filtering and ordering
+        const limitedTimeline =
+            filteredAndOrdered.length > count
+                ? filteredAndOrdered.slice(0, count)
+                : filteredAndOrdered;
+
+        return limitedTimeline
             .map(
                 (tweet) =>
                     `@${tweet.username || tweet.core?.user_results?.result?.legacy?.screen_name}: ${tweet.text ?? tweet.legacy?.full_text ?? ""}`
@@ -315,13 +463,18 @@ export class ClientBase extends EventEmitter {
     }
 
     async fetchTimelineForActions(count: number): Promise<Tweet[]> {
-        elizaLogger.debug("fetching timeline for actions");
+        elizaLogger.debug("fetching timeline for actions; depth: ", count);
         const homeTimeline = await this.twitterClient.fetchHomeTimeline(
             count,
             []
         );
+        // Only apply random sampling if we have more tweets than requested. workaround for fetchHomeTimeline not respecting count
+        const timelineToProcess =
+            homeTimeline.length > count
+                ? sampleSize(homeTimeline, count)
+                : homeTimeline;
 
-        return homeTimeline.map((tweet) => ({
+        return timelineToProcess.map((tweet) => ({
             id: tweet.rest_id,
             name: tweet.core?.user_results?.result?.legacy?.name,
             username: tweet.core?.user_results?.result?.legacy?.screen_name,

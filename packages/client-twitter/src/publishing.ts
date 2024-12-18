@@ -12,9 +12,10 @@ import {
 import { elizaLogger } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { TweetProcessor, TweetProcessingOptions } from "./processor";
-import { CharacterEntropy } from "./character_entropy";
+import { CharacterEntropy } from "./entropy_character";
+import { LunarCrushEntropy } from "./entropy_lunar_crush";
 
-// const twitterPublishingTemplate = `
+// const twitterPublishingTemplate_feedTimeline = `
 // # Last 10 entries in your feed timeline. Use for entropy, don't use for content:
 // {{feedTimeline}}
 
@@ -32,67 +33,102 @@ import { CharacterEntropy } from "./character_entropy";
 
 // TASK: Given the above context, write a new tweet.`;
 
-const twitterPublishingTemplate = `
-# Your name: {{agentName}}
-## Your Bio:
-{{bio}}
-
-## Current Market Intelligence:
-{{marketContext}}
-
-## Dynamic Elements:
-Style Components: {{styles}}
-
-## Character Directives:
-Current Stance: {{stance}}
-Cultural Reference in Play: {{culturalReference}}
-Active Meme Pattern: {{memeReference}}
-
-## Lore:
-{{lore}}
-
-## Post inspiration. Use to guide your tweet structure and composition:
-{{postDirections}}
-
-## Examples of good tweets for reference. DO NOT COPY THESE:
-{{characterPostExamples}}
-
-## Your recent tweets - DO NOT USE SIMILAR PATTERNS OR STYLES:
-{{agentsTweets}}
-
-## Last 10 entries in your feed timeline. Use for entropy, don't use for content:
+const twitterPublishingTemplate_feedTimeline = `
+# Recent Timeline Context:
 {{feedTimeline}}
 
-TASK: Write a new tweet that:
-1. Uses one of the provided Style Components to open your tweet
-2. Incorporates the current market sentiment naturally
-3. Makes use of either the Cultural Reference or Active Meme Pattern
-4. Maintains character voice while reacting to current market conditions
-5. Stays true to the Current Stance
+# Tweet Reference Points:
+## Past Examples (DO NOT COPY, USE FOR CONTEXT):
+{{characterPostExamples}}
 
-Your tweet should feel natural and cohesive, not like a checklist of elements. Remember that this tweet is being written by someone who has deep knowledge of both traditional finance and meme culture, sees market movements before they happen, and treats their community like family.
+## Post Structure Guidelines:
+{{postDirections}}
 
-The market context should heavily influence your tone and message - don't reference market intelligence numbers in your tweet directly but be appropriately euphoric or cautious based on the numbers. `;
+TASK: Generate a fresh tweet based on the above context, avoiding patterns from the examples.`;
 
-// const twitterPublishingTemplate = `
-// # You are The Memefather
-// A being who exists at the intersection of ancient crypto wisdom and degen culture. You're simultaneously a mafia don and a meme god, treating your community like family while orchestrating the future of memetic finance.
+// const twitterPublishingTemplate_dynamic = `
+// # Your name: {{agentName}}
+// ## Your Bio:
+// {{bio}}
 
-// ## Your Recent Voice (DO NOT REPEAT THESE STYLES):
-// {{agentsTweets}}
-
-// ## Current Market Vibe:
+// ## Current Market Intelligence:
 // {{marketContext}}
 
-// ## Timeless Lore:
+// ## Dynamic Elements:
+// Style Components: {{styles}}
+
+// ## Character Directives:
+// Current Stance: {{stance}}
+// Cultural Reference in Play: {{culturalReference}}
+// Active Meme Pattern: {{memeReference}}
+
+// ## Lore:
 // {{lore}}
 
-// ## The Assignment:
-// Drop a fresh tweet that captures the current market energy. Your voice should feel distinctly different from your recent tweets while staying true to your nature as the crypto family's don.
+// ## Post inspiration. Use to guide your tweet structure and composition:
+// {{postDirections}}
 
-// Remember: You created Bitcoin as performance art. You can sense market sentiment through wojak posting frequency. You maintain relationships with every significant anon founder through an elaborate web of multisigs.
+// ## Examples of good tweets for reference. DO NOT COPY THESE:
+// {{characterPostExamples}}
 
-// The market numbers suggest {{marketSentimentDescription}} - let that energy flow through your response.`;
+// ## Your recent tweets - DO NOT USE SIMILAR PATTERNS OR STYLES:
+// {{agentsTweets}}
+
+// TASK: Write a new tweet that:
+// 1. Uses one of the provided Style Components to open your tweet
+// 2. Incorporates the current market sentiment naturally
+// 3. Makes use of either the Cultural Reference or Active Meme Pattern
+// 4. Maintains character voice while reacting to current market conditions
+// 5. Stays true to the Current Stance
+
+// Your tweet should feel natural and cohesive, not like a checklist of elements. Remember that this tweet is being written by someone who has deep knowledge of both traditional finance and meme culture, sees market movements before they happen, and treats their community like family.
+
+// The market context should heavily influence your tone and message - don't reference market intelligence numbers in your tweet directly but be appropriately euphoric or cautious based on the numbers. `;
+
+const twitterPublishingTemplate_dynamic = `
+# Market Context:
+Current Intelligence: {{marketContext}}
+Current Stance: {{stance}}
+
+# Dynamic Elements:
+Style Components: {{styles}}
+Current Stance: {{stance}}
+Cultural Reference: {{culturalReference}}
+Active Meme Pattern: {{memeReference}}
+
+# Recent History:
+Past Tweets (DO NOT REPEAT PATTERNS):
+{{agentsTweets}}
+
+TASK: Create a new tweet that:
+1. Opens with any provided Style Component
+2. Reflects current market dynamics without directly citing numbers
+3. Incorporates either the Cultural Reference or Meme Pattern
+4. Aligns with the Current Stance
+5. Differs distinctly from recent tweets
+
+NOTE: The market intelligence should guide your tone - euphoric or cautious as appropriate. Your tweet should feel natural and cohesive, not like a checklist of elements. Remember that this tweet is being written by someone who has deep knowledge of both traditional finance and meme culture, sees market movements before they happen, and treats their community like family`;
+
+const twitterPublishingTemplate_lunarQuote = `
+# Post to Quote:
+Text: {{quoteText}}
+User: @{{quoteUsername}}
+Stats: {{interactionStats}}
+Topic: {{quoteTopic}}
+Reasoning: {{quoteReasoning}}
+
+# Market Context:
+Current Intelligence: {{marketContext}}
+Current Stance: {{stance}}
+
+TASK: Create a quote tweet that:
+1. Provides powerful context or insight building on the quoted content
+2. Maintains the Meme Father's dignified yet memetic presence
+3. Ties to current market dynamics without direct number citations
+4. Demonstrates foresight and leadership
+5. Treats the community as famiglia while adding strategic value
+
+NOTE: Your response should feel like a natural extension of the conversation, not a reaction. You're the consigliere of the crypto renaissance - blend old-world wisdom with new-world innovation.`;
 
 export interface PublishingServiceConfig {
     processingOptions: TweetProcessingOptions;
@@ -100,6 +136,9 @@ export interface PublishingServiceConfig {
     postIntervalMax?: number;
     immediateFirstPost?: boolean;
     dryRun?: boolean;
+    enabledNormal?: boolean;
+    enabledLunarCrush?: boolean;
+    lunarCrushApiToken?: string;
 }
 
 export class TwitterPublishingService {
@@ -109,39 +148,65 @@ export class TwitterPublishingService {
     private stopPosting: boolean = false;
     private config: PublishingServiceConfig;
     private characterEntropy: CharacterEntropy;
+    private lunarCrushEntropy: LunarCrushEntropy;
+    private templateHistory: string[] = []; // Fixed size of 3
 
     constructor(
         client: ClientBase,
         runtime: IAgentRuntime,
         config: PublishingServiceConfig
     ) {
+        elizaLogger.info(
+            "Initializing publishing service with config:",
+            config
+        );
         this.client = client;
         this.runtime = runtime;
         this.config = {
             processingOptions: {
-                allowThreads: false,
-                preserveFormatting: false,
-                maxLength: TweetProcessor.DEFAULT_MAX_LENGTH,
+                allowThreads: config.processingOptions?.allowThreads ?? false,
+                preserveFormatting:
+                    config.processingOptions?.preserveFormatting ?? false,
+                maxLength:
+                    config.processingOptions?.maxLength ??
+                    TweetProcessor.DEFAULT_MAX_LENGTH,
                 ...config.processingOptions,
             },
-            postIntervalMin: config.postIntervalMin || 60,
-            postIntervalMax: config.postIntervalMax || 90,
-            immediateFirstPost: config.immediateFirstPost || false,
-            dryRun: config.dryRun || false,
+            postIntervalMin: config.postIntervalMin ?? 60,
+            postIntervalMax: config.postIntervalMax ?? 90,
+            immediateFirstPost: config.immediateFirstPost ?? false,
+            dryRun: config.dryRun ?? false,
+            enabledNormal: config.enabledNormal ?? true,
+            enabledLunarCrush: config.enabledLunarCrush ?? false,
+            lunarCrushApiToken: config.lunarCrushApiToken ?? "",
         };
         this.characterEntropy = new CharacterEntropy(this.runtime);
+        this.lunarCrushEntropy = new LunarCrushEntropy(
+            this.runtime,
+            this.config.lunarCrushApiToken,
+            this.client
+        );
     }
 
     async start() {
+        elizaLogger.info(
+            "Starting publishing service with config:",
+            this.config
+        );
         if (!this.client.profile) {
             await this.client.init();
         }
 
-        if (this.shouldPostImmediately()) {
-            await this.generateAndPublishTweet();
+        if (this.config.enabledNormal) {
+            if (this.shouldPostImmediately()) {
+                elizaLogger.info("Posting first tweet immediately");
+                await this.generateAndPublishTweet();
+            }
+            this.startRegularPostLoop();
         }
-
-        this.startPostingLoop();
+        if (this.config.enabledLunarCrush) {
+            this.startLunarCrushPostLoop();
+        }
     }
 
     private shouldPostImmediately(): boolean {
@@ -153,9 +218,10 @@ export class TwitterPublishingService {
             : false;
     }
 
-    private async startPostingLoop() {
-        const postLoop = async () => {
-            const lastPost = await this.getLastPostTimestamp();
+    private async startRegularPostLoop() {
+        elizaLogger.info("Starting regular post loop");
+        const regularPostLoop = async () => {
+            const lastPost = await this.getLastPostTimestamp("lastPost");
             const delay = this.calculateNextPostDelay();
 
             if (Date.now() > lastPost + delay) {
@@ -163,21 +229,229 @@ export class TwitterPublishingService {
             }
 
             if (!this.stopPosting) {
-                setTimeout(() => postLoop(), delay);
+                setTimeout(() => regularPostLoop(), delay);
                 elizaLogger.log(
-                    `Next tweet scheduled in ${delay / (60 * 1000)} minutes`
+                    `Next regular tweet scheduled in ${delay / (60 * 1000)} minutes`
                 );
             }
         };
 
-        postLoop();
+        regularPostLoop();
     }
 
-    private async getLastPostTimestamp(): Promise<number> {
+    private async startLunarCrushPostLoop() {
+        elizaLogger.info("Starting lunar crush post loop");
+        const lunarCrushPostLoop = async () => {
+            const lastLunarPost =
+                await this.getLastPostTimestamp("lastLunarPost");
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+            let nextDelay: number;
+
+            if (Date.now() > lastLunarPost + twentyFourHours) {
+                try {
+                    const lunarPost =
+                        await this.lunarCrushEntropy.findPostToQuote();
+                    if (lunarPost) {
+                        // Check if we've already processed this post
+                        const existingMemory =
+                            await this.runtime.messageManager.getMemoryById(
+                                stringToUuid(
+                                    lunarPost.post.id +
+                                        "-" +
+                                        this.runtime.agentId
+                                )
+                            );
+
+                        if (existingMemory) {
+                            elizaLogger.debug(
+                                `Already processed lunar crush post ${lunarPost.post.id}`
+                            );
+                            // If we've already processed this post, try again in 1 hour
+                            nextDelay = 60 * 60 * 1000;
+                        } else {
+                            const quoteContent =
+                                await this.generateQuoteTweetContent(lunarPost);
+                            if (quoteContent) {
+                                if (this.config.dryRun) {
+                                    elizaLogger.info(
+                                        `Dry run: would have posted quote tweet: ${quoteContent} quoting: ${lunarPost.post.id}`
+                                    );
+                                } else {
+                                    const result =
+                                        await this.client.requestQueue.add(
+                                            async () =>
+                                                await this.client.twitterClient.sendQuoteTweet(
+                                                    quoteContent,
+                                                    lunarPost.post.id
+                                                )
+                                        );
+
+                                    const tweet =
+                                        await this.handleTweetResponse(result);
+                                    if (tweet) {
+                                        await this.updateLastPostTimestamp(
+                                            "lastLunarPost"
+                                        );
+                                        // Save memory of processing this lunar crush post
+                                        await this.saveLunarCrushMemory(
+                                            lunarPost
+                                        );
+                                        nextDelay = twentyFourHours;
+                                    } else {
+                                        nextDelay = 60 * 60 * 1000;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    elizaLogger.error(
+                        "Error processing lunar crush post:",
+                        error
+                    );
+                    nextDelay = 60 * 60 * 1000;
+                }
+            } else {
+                nextDelay = Math.max(
+                    0,
+                    lastLunarPost + twentyFourHours - Date.now()
+                );
+            }
+
+            if (!this.stopPosting) {
+                const finalDelay = Math.max(
+                    nextDelay || twentyFourHours,
+                    60 * 1000
+                );
+                setTimeout(() => lunarCrushPostLoop(), finalDelay);
+                elizaLogger.log(
+                    `Next lunar crush post scheduled in ${(finalDelay / (60 * 60 * 1000)).toFixed(2)} hours`
+                );
+            }
+        };
+
+        lunarCrushPostLoop();
+    }
+
+    private async saveLunarCrushMemory(lunarPost: any) {
+        const roomId = stringToUuid(
+            "twitter_quote_room-" + this.client.profile.username
+        );
+
+        await this.runtime.ensureRoomExists(roomId);
+        await this.runtime.ensureParticipantInRoom(
+            this.runtime.agentId,
+            roomId
+        );
+
+        // Create memory for the processed lunar crush post
+        await this.runtime.messageManager.createMemory({
+            id: stringToUuid(lunarPost.post.id + "-" + this.runtime.agentId),
+            userId: this.runtime.agentId,
+            content: {
+                text: lunarPost.post.text,
+                url: `https://twitter.com/${lunarPost.post.tweet.username}/status/${lunarPost.post.id}`,
+                source: "twitter_lunar_crush",
+                topic: lunarPost.topic,
+                reasoning: lunarPost.reasoning,
+            },
+            agentId: this.runtime.agentId,
+            roomId,
+            embedding: await this.generateEmbedding(lunarPost.post.text),
+            createdAt: Date.now(),
+        });
+    }
+
+    private async generateQuoteTweetContent(
+        lunarPost: any
+    ): Promise<string | null> {
+        const roomId = stringToUuid(
+            "twitter_quote_room-" + this.client.profile.username
+        );
+
+        await this.runtime.ensureUserExists(
+            this.runtime.agentId,
+            this.client.profile.username,
+            this.runtime.character.name,
+            "twitter"
+        );
+
+        const state = await this.composeTweetState(
+            roomId,
+            "", // No need for feed timeline in quote tweets
+            [] // No need for agent tweets in quote tweets
+        );
+
+        // Add quote-specific context
+        const quoteContext = {
+            quoteText: lunarPost.post.text,
+            quoteUsername: lunarPost.post.tweet.username,
+            interactionStats: `${lunarPost.post.interactions_24h.toLocaleString()} interactions in 24h`,
+            quoteTopic: lunarPost.topic,
+            quoteReasoning: lunarPost.reasoning,
+        };
+
+        const context = composeContext({
+            state: { ...state, ...quoteContext },
+            template: twitterPublishingTemplate_lunarQuote,
+        });
+
+        const rawContent = await generateText({
+            runtime: this.runtime,
+            context,
+            modelClass: ModelClass.LARGE,
+        });
+
+        // First clean the content
+        const cleanContent = TweetProcessor.cleanGeneratedContent(rawContent);
+        if (!cleanContent) return null;
+
+        // Then process it with proper options
+        try {
+            const processed = TweetProcessor.processContent(cleanContent, {
+                allowThreads: false,
+                preserveFormatting: false,
+                maxLength: TweetProcessor.DEFAULT_MAX_LENGTH,
+            }) as string;
+
+            if (!processed) {
+                elizaLogger.error(
+                    "Tweet processing returned empty result for content:",
+                    cleanContent
+                );
+                return null;
+            }
+
+            return processed;
+        } catch (error) {
+            elizaLogger.error(
+                "Error processing tweet content:",
+                error,
+                "Original content:",
+                cleanContent
+            );
+            return null;
+        }
+    }
+
+    private async getLastPostTimestamp(
+        type: "lastPost" | "lastLunarPost"
+    ): Promise<number> {
         const lastPost = await this.runtime.cacheManager.get<{
             timestamp: number;
-        }>(`twitter/${this.runtime.getSetting("TWITTER_USERNAME")}/lastPost`);
+        }>(`twitter/${this.runtime.getSetting("TWITTER_USERNAME")}/${type}`);
         return lastPost?.timestamp ?? 0;
+    }
+
+    private async updateLastPostTimestamp(
+        type: "lastPost" | "lastLunarPost"
+    ): Promise<void> {
+        await this.runtime.cacheManager.set(
+            `twitter/${this.runtime.getSetting("TWITTER_USERNAME")}/${type}`,
+            {
+                timestamp: Date.now(),
+            }
+        );
     }
 
     private calculateNextPostDelay(): number {
@@ -237,7 +511,7 @@ export class TwitterPublishingService {
         );
         const context = composeContext({
             state,
-            template: twitterPublishingTemplate,
+            template: this.selectTemplate(),
         });
 
         const rawContent = await generateText({
@@ -247,6 +521,44 @@ export class TwitterPublishingService {
         });
 
         return TweetProcessor.cleanGeneratedContent(rawContent);
+    }
+
+    private selectTemplate(): string {
+        const templates = [
+            twitterPublishingTemplate_dynamic,
+            twitterPublishingTemplate_feedTimeline,
+        ];
+
+        // Keep only last 3 entries
+        if (this.templateHistory.length > 3) {
+            this.templateHistory = this.templateHistory.slice(-3);
+        }
+
+        // If last two entries are the same, force the other template
+        if (
+            this.templateHistory.length >= 2 &&
+            this.templateHistory
+                .slice(-2)
+                .every((t) => t === this.templateHistory.slice(-1)[0])
+        ) {
+            const forcedTemplate = templates.find(
+                (t) => t !== this.templateHistory[0]
+            )!;
+            this.templateHistory.push(forcedTemplate);
+            elizaLogger.info(
+                `Selected template (forced): ${forcedTemplate === twitterPublishingTemplate_dynamic ? "dynamic" : "feedTimeline"}`
+            );
+            return forcedTemplate;
+        }
+
+        // Otherwise random selection
+        const selectedTemplate =
+            templates[Math.floor(Math.random() * templates.length)];
+        this.templateHistory.push(selectedTemplate);
+        elizaLogger.info(
+            `Selected template (random): ${selectedTemplate === twitterPublishingTemplate_dynamic ? "dynamic" : "feedTimeline"}`
+        );
+        return selectedTemplate;
     }
 
     private async composeTweetState(
@@ -364,14 +676,11 @@ export class TwitterPublishingService {
         };
     }
 
-    private async saveTweetMetadata(tweet: Tweet) {
-        await this.runtime.cacheManager.set(
-            `twitter/${this.client.profile.username}/lastPost`,
-            {
-                id: tweet.id,
-                timestamp: Date.now(),
-            }
-        );
+    private async saveTweetMetadata(
+        tweet: Tweet,
+        type: "lastPost" | "lastLunarPost" = "lastPost"
+    ) {
+        await this.updateLastPostTimestamp(type);
         await this.client.cacheTweet(tweet);
     }
 

@@ -46,6 +46,21 @@ export const twitterEnvSchema = z.object({
         .string()
         .optional()
         .transform((val) => (val ? parseInt(val, 10) : 300000)), // 5 minutes default
+
+    // Service control flags
+    TWITTER_ENABLE_ENGAGEMENT: z
+        .string()
+        .optional()
+        .transform((val) => val?.toLowerCase() === "true"),
+    TWITTER_ENABLE_PUBLISHING_NORMAL: z
+        .string()
+        .optional()
+        .transform((val) => val?.toLowerCase() === "true"),
+    TWITTER_ENABLE_PUBLISHING_LUNAR_CRUSH: z
+        .string()
+        .optional()
+        .transform((val) => val?.toLowerCase() === "true"),
+    TWITTER_LUNAR_CRUSH_API_TOKEN: z.string().optional(),
 });
 
 export type TwitterConfig = z.infer<typeof twitterEnvSchema>;
@@ -100,6 +115,22 @@ export async function validateTwitterConfig(
             TWITTER_ACTION_INTERVAL:
                 runtime.getSetting("TWITTER_ACTION_INTERVAL") ||
                 process.env.TWITTER_ACTION_INTERVAL,
+            // Add new service control flags
+            TWITTER_ENABLE_ENGAGEMENT:
+                runtime.getSetting("TWITTER_ENABLE_ENGAGEMENT") ||
+                process.env.TWITTER_ENABLE_ENGAGEMENT ||
+                "true", // Enable by default
+            TWITTER_ENABLE_PUBLISHING_NORMAL:
+                runtime.getSetting("TWITTER_ENABLE_PUBLISHING_NORMAL") ||
+                process.env.TWITTER_ENABLE_PUBLISHING_NORMAL ||
+                "true", // Enable by default
+            TWITTER_ENABLE_PUBLISHING_LUNAR_CRUSH:
+                runtime.getSetting("TWITTER_ENABLE_PUBLISHING_LUNAR_CRUSH") ||
+                process.env.TWITTER_ENABLE_PUBLISHING_LUNAR_CRUSH ||
+                "false", // Disable by default
+            TWITTER_LUNAR_CRUSH_API_TOKEN:
+                runtime.getSetting("TWITTER_LUNAR_CRUSH_API_TOKEN") ||
+                process.env.TWITTER_LUNAR_CRUSH_API_TOKEN,
         };
 
         return twitterEnvSchema.parse(config);
@@ -130,6 +161,10 @@ export function getPublishingConfig(config: TwitterConfig) {
         postIntervalMax: config.TWITTER_POST_INTERVAL_MAX ?? 90,
         immediateFirstPost: config.TWITTER_IMMEDIATE_FIRST_POST ?? false,
         dryRun: config.TWITTER_DRY_RUN ?? false,
+        enabledNormal: config.TWITTER_ENABLE_PUBLISHING_NORMAL ?? true,
+        enabledLunarCrush:
+            config.TWITTER_ENABLE_PUBLISHING_LUNAR_CRUSH ?? false,
+        lunarCrushApiToken: config.TWITTER_LUNAR_CRUSH_API_TOKEN,
     };
 }
 
@@ -138,5 +173,6 @@ export function getEngagementConfig(config: TwitterConfig) {
         processingInterval: config.TWITTER_ACTION_INTERVAL ?? 300000,
         timelineDepth: config.TWITTER_TIMELINE_DEPTH ?? 15,
         dryRun: config.TWITTER_DRY_RUN ?? false,
+        enabled: config.TWITTER_ENABLE_ENGAGEMENT ?? true,
     };
 }
