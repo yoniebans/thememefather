@@ -279,7 +279,7 @@ export class AutoClient {
                     description: bestMeme.content.description as string,
                     image_url: bestMeme.content.image_url as string,
                 },
-                buyAmountSol: 2.061752989,
+                buyAmountSol: 0.0069,
             });
 
             if (deploymentResult.success) {

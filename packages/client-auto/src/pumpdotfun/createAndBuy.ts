@@ -30,7 +30,9 @@ export const launchToken = async ({
         // Validate minimum SOL requirement
         const buyAmount = Number(buyAmountSol);
         if (buyAmount < MINIMUM_SOL) {
-            throw new Error(`Buy amount must be at least ${MINIMUM_SOL} SOL for token creation`);
+            throw new Error(
+                `Buy amount must be at least ${MINIMUM_SOL} SOL for token creation`
+            );
         }
 
         // Get wallet keypair using the utility function
@@ -51,7 +53,9 @@ export const launchToken = async ({
 
         // Generate new mint keypair for the token
         const mintKeypair = Keypair.generate();
-        console.log(`Generated mint address: ${mintKeypair.publicKey.toBase58()}`);
+        console.log(
+            `Generated mint address: ${mintKeypair.publicKey.toBase58()}`
+        );
 
         // Read image file and convert to Blob
         const imageBuffer = fs.readFileSync(tokenMetadata.image_url);
@@ -65,29 +69,34 @@ export const launchToken = async ({
             file: imageBlob,
         };
 
-        // Priority fee settings from SDK example
+        // Priority fee settings increased for better network priority
         const priorityFee: PriorityFee = {
-            unitLimit: 250000,
-            unitPrice: 250000,
+            unitLimit: 1_000_000,
+            unitPrice: 1_000_000,
         };
 
-        // Setup connection and SDK
+        // Setup connection with longer timeout and explicit confirmation settings
         const connection = new Connection(rpcUrl, {
             commitment: "confirmed",
-            confirmTransactionInitialTimeout: 500000,
+            confirmTransactionInitialTimeout: 120_000, // 2 minutes
             wsEndpoint: rpcUrl.replace("https", "wss"),
         });
 
         const wallet = new Wallet(deployerKeypair);
         const provider = new AnchorProvider(connection, wallet, {
             commitment: "finalized",
+            preflightCommitment: "processed", // Allow faster preflight
+            skipPreflight: false, // Keep preflight checks
+            timeout: 180_000, // 3 minutes total timeout
         });
         const sdk = new PumpFunSDK(provider);
 
         // Convert SOL amount to lamports
         const lamports = Math.floor(buyAmount * 1_000_000_000);
 
-        console.log(`Creating token with ${buyAmount} SOL and ${slippage} basis points slippage`);
+        console.log(
+            `Creating token with ${buyAmount} SOL and ${slippage} basis points slippage`
+        );
 
         // Create and buy the token
         const createResults = await sdk.createAndBuy(
@@ -110,7 +119,10 @@ export const launchToken = async ({
                 deployerKeypair.publicKey,
                 false
             );
-            const balance = await connection.getTokenAccountBalance(ata, "processed");
+            const balance = await connection.getTokenAccountBalance(
+                ata,
+                "processed"
+            );
 
             return {
                 success: true,
@@ -118,7 +130,7 @@ export const launchToken = async ({
                 creator: deployerKeypair.publicKey.toBase58(),
                 tokenUrl,
                 balance: balance.value.uiAmount,
-                initialInvestment: buyAmount
+                initialInvestment: buyAmount,
             };
         } else {
             return {
