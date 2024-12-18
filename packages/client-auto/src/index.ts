@@ -7,7 +7,10 @@ import {
     composeContext,
     ModelClass,
     stringToUuid,
+    Media,
+    Content,
 } from "@ai16z/eliza";
+import { launchToken } from "./pumpdotfun/createAndBuy";
 
 interface MarketSentiment {
     fearGreedIndex: number;
@@ -192,23 +195,207 @@ Respond with a JSON markdown block containing only the scores and detailed reaso
 
 export class AutoClient {
     interval: NodeJS.Timeout;
+    deploymentInterval: NodeJS.Timeout;
     runtime: IAgentRuntime;
 
     constructor(runtime: IAgentRuntime) {
         this.runtime = runtime;
 
-        // Initial run after 30 seconds
-        setTimeout(async () => {
-            await this.rankPendingMemes();
+        // // Initial run after 30 seconds
+        // setTimeout(async () => {
+        //     await this.rankPendingMemes();
 
-            // Then start a loop that runs every 4 hours
-            this.interval = setInterval(
+        //     // Then start a loop that runs every 4 hours
+        //     this.interval = setInterval(
+        //         async () => {
+        //             await this.rankPendingMemes();
+        //         },
+        //         24 * 60 * 60 * 1000 // 24 hours in milliseconds
+        //     );
+        // }, 30 * 1000); // 30 seconds delay
+
+        // Initial deployment run after 1 minute
+        setTimeout(async () => {
+            await this.deployBestMeme();
+
+            // Start deployment loop that runs every 7 days
+            this.deploymentInterval = setInterval(
                 async () => {
-                    await this.rankPendingMemes();
+                    await this.deployBestMeme();
                 },
-                24 * 60 * 60 * 1000 // 24 hours in milliseconds
+                7 * 24 * 60 * 60 * 1000 // 7 days
             );
-        }, 30 * 1000); // 30 seconds delay
+        }, 10 * 1000);
+    }
+
+    async deployBestMeme() {
+        try {
+            elizaLogger.info("=== Starting meme deployment process ===");
+
+            const memeManager = this.runtime.getMemoryManager("memes");
+            if (!memeManager) {
+                elizaLogger.error("❌ Meme manager not found");
+                return;
+            }
+
+            // Get all ranked memes
+            const allMemes = await memeManager.getMemories({
+                roomId: this.runtime.agentId,
+                count: 100,
+                unique: true,
+            });
+
+            // Filter and sort memes by score
+            const rankedMemes = allMemes
+                .filter(
+                    (meme) =>
+                        meme.content.votes &&
+                        meme.content.status === "pending" &&
+                        meme.content.image_url
+                )
+                .sort(
+                    (a, b) =>
+                        Number(b.content.votes || 0) -
+                        Number(a.content.votes || 0)
+                );
+
+            if (rankedMemes.length === 0) {
+                elizaLogger.info("No eligible memes found for deployment");
+                return;
+            }
+
+            // Get the highest ranked meme
+            const bestMeme = rankedMemes[0];
+            elizaLogger.info(
+                `Selected meme for deployment: ${bestMeme.content.ticker} (Score: ${bestMeme.content.votes})`
+            );
+
+            // Launch the token
+            const deploymentResult = await launchToken({
+                runtime: this.runtime,
+                tokenMetadata: {
+                    name: bestMeme.content.name as string,
+                    symbol: bestMeme.content.ticker as string,
+                    description: bestMeme.content.description as string,
+                    image_url: bestMeme.content.image_url as string,
+                },
+                buyAmountSol: 2.061752989,
+            });
+
+            if (deploymentResult.success) {
+                // Create media attachment
+                const mediaAttachment: Media = {
+                    id: crypto.randomUUID(),
+                    url: bestMeme.content.image_url as string,
+                    title: bestMeme.content.name as string,
+                    source: "the_meme_father",
+                    description: bestMeme.content.description as string,
+                    text: `Meme Ticker: ${bestMeme.content.ticker} - ${bestMeme.content.description}`,
+                };
+
+                // Create content object following Content interface
+                const content: Content = {
+                    text: `Meme Ticker: ${bestMeme.content.ticker} - ${bestMeme.content.description}`,
+                    action: "MEME_DEPLOYED",
+                    source: "the_meme_father",
+                    attachments: [mediaAttachment],
+                    // Additional properties specific to our use case
+                    ticker: bestMeme.content.ticker,
+                    description: bestMeme.content.description,
+                    image_description: bestMeme.content.image_description,
+                    name: bestMeme.content.name,
+                    image_url: bestMeme.content.image_url,
+                    votes: bestMeme.content.votes,
+                    status: "deployed",
+                    contract_address: deploymentResult.contractAddress,
+                    deployment_timestamp: Date.now(),
+                    deployment_details: deploymentResult,
+                    ranking_details: bestMeme.content.ranking_details,
+                };
+
+                // Create memory following Memory interface
+                const deployedMemeMemory: Memory = {
+                    id: crypto.randomUUID(),
+                    userId: bestMeme.userId,
+                    agentId: this.runtime.agentId,
+                    roomId: this.runtime.agentId,
+                    createdAt: Date.now(),
+                    content,
+                    unique: true,
+                };
+
+                // Create new memories for all memes
+                elizaLogger.info("Creating new memories for all memes");
+
+                // Create new memory for the deployed meme
+                await memeManager.createMemory(deployedMemeMemory, true);
+                elizaLogger.info(
+                    "✅ Deployed meme memory created successfully"
+                );
+
+                // Update all other pending memes to NGMI status
+                const ngmiMemes = rankedMemes.filter(
+                    (meme) =>
+                        meme.id !== bestMeme.id &&
+                        meme.content.status === "pending"
+                );
+
+                for (const meme of ngmiMemes) {
+                    const ngmiContent: Content = {
+                        ...meme.content,
+                        text: meme.content.text,
+                        action: "MEME_NGMI",
+                        source: "the_meme_father",
+                        status: "ngmi",
+                        ngmi_timestamp: Date.now(),
+                        ngmi_reason: "Another meme was selected for deployment",
+                    };
+
+                    const ngmiMemory: Memory = {
+                        id: crypto.randomUUID(),
+                        userId: meme.userId,
+                        agentId: this.runtime.agentId,
+                        roomId: this.runtime.agentId,
+                        createdAt: Date.now(),
+                        content: ngmiContent,
+                        unique: true,
+                    };
+
+                    await memeManager.createMemory(ngmiMemory, true);
+                    elizaLogger.info(
+                        `✅ NGMI memory created for ${meme.content.ticker}`
+                    );
+                }
+
+                // After all new memories are created, remove old memories
+                elizaLogger.info("Removing old memories");
+                await Promise.all(
+                    rankedMemes.map((meme) => memeManager.removeMemory(meme.id))
+                );
+                elizaLogger.info("✅ Old memories removed successfully");
+
+                elizaLogger.info(
+                    `✅ Successfully deployed meme token ${bestMeme.content.ticker}`
+                );
+                elizaLogger.info(`Token URL: ${deploymentResult.tokenUrl}`);
+                elizaLogger.info(
+                    `Contract Address: ${deploymentResult.contractAddress}`
+                );
+                elizaLogger.info(
+                    `Updated ${ngmiMemes.length} other memes to NGMI status`
+                );
+            } else {
+                elizaLogger.error(
+                    `❌ Failed to deploy meme token: ${deploymentResult.error}`
+                );
+            }
+        } catch (error) {
+            elizaLogger.error(
+                "❌ Error during meme deployment process:",
+                error
+            );
+            elizaLogger.error("Stack trace:", error.stack);
+        }
     }
 
     async rankPendingMemes() {
