@@ -22,14 +22,26 @@ interface RankingDetails {
         timestamp: number;
     }>;
 }
+export interface DeploymentDetails {
+    success: boolean;
+    contractAddress: string;
+    creator: string;
+    tokenUrl: string;
+    balance: number;
+    initialInvestment: number;
+}
 
 export interface Meme {
     id: string;
     ticker: string;
+    name: string;
     description: string;
     votes: number;
     author: string;
     timestamp: string;
+    status: string;
     url?: string;
     ranking_details?: RankingDetails;
+    deployment_details?: DeploymentDetails;
+    deployment_timestamp?: number;
 }

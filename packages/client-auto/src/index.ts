@@ -201,31 +201,63 @@ export class AutoClient {
     constructor(runtime: IAgentRuntime) {
         this.runtime = runtime;
 
-        // // Initial run after 30 seconds
-        // setTimeout(async () => {
-        //     await this.rankPendingMemes();
-
-        //     // Then start a loop that runs every 4 hours
-        //     this.interval = setInterval(
-        //         async () => {
-        //             await this.rankPendingMemes();
-        //         },
-        //         24 * 60 * 60 * 1000 // 24 hours in milliseconds
-        //     );
-        // }, 30 * 1000); // 30 seconds delay
-
-        // Initial deployment run after 1 minute
-        setTimeout(async () => {
-            await this.deployBestMeme();
-
-            // Start deployment loop that runs every 7 days
-            this.deploymentInterval = setInterval(
-                async () => {
-                    await this.deployBestMeme();
-                },
-                7 * 24 * 60 * 60 * 1000 // 7 days
+        // Schedule next scan at 18:00 UTC
+        const scheduleNextScan = () => {
+            const now = new Date();
+            const utcNow = new Date(
+                now.getTime() + now.getTimezoneOffset() * 60000
             );
-        }, 10 * 1000);
+
+            // Set to today's 18:00 UTC
+            const nextScan = new Date(
+                Date.UTC(
+                    utcNow.getUTCFullYear(),
+                    utcNow.getUTCMonth(),
+                    utcNow.getUTCDate(),
+                    18,
+                    0,
+                    0,
+                    0
+                )
+            );
+
+            // If we're past today's scan, schedule for tomorrow
+            if (utcNow > nextScan) {
+                nextScan.setUTCDate(nextScan.getUTCDate() + 1);
+            }
+
+            const msUntilNextScan = nextScan.getTime() - utcNow.getTime();
+
+            elizaLogger.info(
+                `Next scan scheduled for ${nextScan.toUTCString()} (in ${Math.round(msUntilNextScan / 1000 / 60)} minutes)`
+            );
+
+            // Clear existing interval if any
+            if (this.interval) clearTimeout(this.interval);
+
+            // Schedule next scan
+            this.interval = setTimeout(() => {
+                this.rankPendingMemes()
+                    .then(() => scheduleNextScan()) // Schedule next scan after completion
+                    .catch((error) => {
+                        elizaLogger.error(
+                            "Failed to run scheduled scan:",
+                            error
+                        );
+                        scheduleNextScan(); // Still schedule next scan even if this one failed
+                    });
+            }, msUntilNextScan);
+        };
+
+        // Start the scheduling
+        scheduleNextScan();
+
+        // // Keep deployment check every 30 minutes
+        // this.deploymentInterval = setInterval(() => {
+        //     this.deployBestMeme().catch((error) => {
+        //         elizaLogger.error("Failed to check for deployments:", error);
+        //     });
+        // }, 30 * 60 * 1000);
     }
 
     async deployBestMeme() {
