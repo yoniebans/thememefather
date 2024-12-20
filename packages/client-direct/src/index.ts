@@ -421,12 +421,14 @@ export class DirectClient {
                         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
                         .map((meme) => ({
                             id: meme.id,
+                            name: meme.content.name || "Unknown",
                             ticker: `$${((meme.content.ticker as string) || "UNKNOWN").toUpperCase()}`,
                             description:
                                 meme.content.description ||
                                 "No description available",
                             votes: meme.content.votes || 0,
                             author: meme.userId || "Anonymous",
+                            status: meme.content.status || "unknown",
                             timestamp:
                                 meme.createdAt?.toString() ||
                                 new Date().toISOString(),
@@ -437,7 +439,15 @@ export class DirectClient {
                                 last_scored: meme.content.last_scored,
                             }),
                             ...(meme.content.ranking_details && {
-                                ranking_details: meme.content.ranking_details
+                                ranking_details: meme.content.ranking_details,
+                            }),
+                            ...(meme.content.deployment_details && {
+                                deployment_details:
+                                    meme.content.deployment_details,
+                            }),
+                            ...(meme.content.deployment_timestamp && {
+                                deployment_timestamp:
+                                    meme.content.deployment_timestamp,
                             }),
                         }));
 

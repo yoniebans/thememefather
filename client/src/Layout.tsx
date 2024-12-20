@@ -1,5 +1,10 @@
 import { Outlet } from "react-router-dom";
+import { WalletProvider } from "@/context/WalletContext";
 
 export default function Layout() {
-    return <Outlet />;
+    return (
+        <WalletProvider>
+            <Outlet />
+        </WalletProvider>
+    );
 }

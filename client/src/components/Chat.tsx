@@ -25,7 +25,11 @@ const formatPublicKey = (key: string | null): string => {
     return `${key.slice(0, 4).toLowerCase()}...${key.slice(-4).toLowerCase()}`;
 };
 
-export default function Chat() {
+interface ChatProps {
+    disabled?: boolean;
+}
+
+export default function Chat({ disabled = false }: ChatProps) {
     const { connected, publicKey } = useWallet();
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState<TextResponse[]>([]);
@@ -95,7 +99,7 @@ export default function Chat() {
     };
 
     return (
-        <div className="w-[80%] h-[75vh] flex items-center">
+        <div className="w-[100%] h-[75vh] flex items-center">
             <div className="bg-black/70 backdrop-blur-sm rounded-lg w-full h-full p-6 shadow-2xl border border-zinc-800/50 text-white font-mono">
                 <div className="flex flex-col h-full">
                     {/* Messages - now includes system message */}
@@ -184,9 +188,10 @@ export default function Chat() {
                         <Input
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Type your message..."
-                            className="flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white"
-                            disabled={mutation.isPending}
+                            placeholder={disabled ? "Connect wallet to chat..." : "Type your message..."}
+                            className="flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white thick-cursor"
+                            style={{ caretColor: '#EC4899' }}
+                            disabled={disabled || mutation.isPending}
                         />
                     </form>
                 </div>
