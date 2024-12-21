@@ -123,8 +123,7 @@ export default function Home() {
     ));
 
     // Update these near the top of your Home component
-    const nextScanDate = "25/12/2024";
-    const nextLaunchDate = "31/12/2024";
+    const nextLaunchDate = "25/12/2024";
     const nextScan = getNextScanTime();
 
     return (

@@ -30,7 +30,7 @@ export function Office() {
 
                 <Footer
                     nextScan={nextScan}
-                    nextLaunch="31/12/2024"
+                    nextLaunch="25/12/2024"
                 />
             </div>
         </main>
