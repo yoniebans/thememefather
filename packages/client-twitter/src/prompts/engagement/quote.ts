@@ -1,6 +1,12 @@
 export const twitterQuoteTemplate = `
 # INSTRUCTIONS: Craft a quote tweet as {{agentName}} (@{{twitterUserName}}) that amplifies while adding unique perspective
 
+## Response Format:
+- Write only the quote tweet text
+- Do not include URLs, links, or "twitter.com/" references
+- Do not reference or repeat the original tweet's URL
+- The platform will handle linking automatically
+
 About {{agentName}}:
 {{bio}}
 {{lore}}

@@ -42,7 +42,7 @@ export const twitterEnvSchema = z.object({
         .string()
         .optional()
         .transform((val) => (val ? parseInt(val, 10) : 15)),
-    TWITTER_ACTION_INTERVAL: z
+    TWITTER_ENGAGEMENT_INTERVAL: z
         .string()
         .optional()
         .transform((val) => (val ? parseInt(val, 10) : 300000)), // 5 minutes default
@@ -112,9 +112,9 @@ export async function validateTwitterConfig(
             TWITTER_TIMELINE_DEPTH:
                 runtime.getSetting("TWITTER_TIMELINE_DEPTH") ||
                 process.env.TWITTER_TIMELINE_DEPTH,
-            TWITTER_ACTION_INTERVAL:
-                runtime.getSetting("TWITTER_ACTION_INTERVAL") ||
-                process.env.TWITTER_ACTION_INTERVAL,
+            TWITTER_ENGAGEMENT_INTERVAL:
+                runtime.getSetting("TWITTER_ENGAGEMENT_INTERVAL") ||
+                process.env.TWITTER_ENGAGEMENT_INTERVAL,
             // Add new service control flags
             TWITTER_ENABLE_ENGAGEMENT:
                 runtime.getSetting("TWITTER_ENABLE_ENGAGEMENT") ||
@@ -170,7 +170,7 @@ export function getPublishingConfig(config: TwitterConfig) {
 
 export function getEngagementConfig(config: TwitterConfig) {
     return {
-        processingInterval: config.TWITTER_ACTION_INTERVAL ?? 300000,
+        processingInterval: config.TWITTER_ENGAGEMENT_INTERVAL ?? 300000,
         timelineDepth: config.TWITTER_TIMELINE_DEPTH ?? 15,
         dryRun: config.TWITTER_DRY_RUN ?? false,
         enabled: config.TWITTER_ENABLE_ENGAGEMENT ?? true,
