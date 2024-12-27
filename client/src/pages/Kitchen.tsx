@@ -157,7 +157,7 @@ export function Kitchen() {
 
             <Footer
                 nextScan={nextScan}
-                nextLaunch="25/12/2024"
+                nextLaunch="31/12/2024"
             />
         </main>
     );

@@ -46,7 +46,7 @@ export default function Home() {
         ticker: '???',
         author: 'wojak',
         status: 'deployed',
-        deployment_timestamp: '2024-12-25',
+        deployment_timestamp: '2024-12-31',
     } as Meme;
 
     const displayedMemes = [
@@ -123,7 +123,7 @@ export default function Home() {
     ));
 
     // Update these near the top of your Home component
-    const nextLaunchDate = "25/12/2024";
+    const nextLaunchDate = "31/12/2024";
     const nextScan = getNextScanTime();
 
     return (
