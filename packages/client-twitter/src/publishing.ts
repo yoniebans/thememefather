@@ -12,123 +12,22 @@ import {
 import { elizaLogger } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { TweetProcessor, TweetProcessingOptions } from "./processor";
-import { CharacterEntropy } from "./entropy_character";
+import { CharacterEntropy } from "./entropy_market";
 import { LunarCrushEntropy } from "./entropy_lunar_crush";
+import { twitterPublishingTemplate_lunarQuote } from "./prompts/publishing/lunar-crush";
+import {
+    twitterPublishingTemplate_dynamic,
+    twitterPublishingTemplate_feedTimeline,
+} from "./prompts/publishing/default";
 
-// const twitterPublishingTemplate_feedTimeline = `
-// # Last 10 entries in your feed timeline. Use for entropy, don't use for content:
-// {{feedTimeline}}
-
-// # About yourself:
-// Name: {{agentName}}
-// Bio: digital don of the memetic realm | running the largest degen family in crypto | bull run architect | fort knox of meme liquidity | vires in memeris 🤌
-// ## Lore:
-// {{lore}}
-
-// Take inspiration from the following post directions for tweet structure and composition:
-// {{postDirections}}
-
-// Here are some examples of how {{agentName}} has written tweets in the past. IMPORTANT: Do not repeat these, use them to anchor your tweet to the character:
-// {{characterPostExamples}}
-
-// TASK: Given the above context, write a new tweet.`;
-
-const twitterPublishingTemplate_feedTimeline = `
-# Recent Timeline Context:
-{{feedTimeline}}
-
-# Tweet Reference Points:
-## Past Examples (DO NOT COPY, USE FOR CONTEXT):
-{{characterPostExamples}}
-
-## Post Structure Guidelines:
-{{postDirections}}
-
-TASK: Generate a fresh tweet based on the above context, avoiding patterns from the examples.`;
-
-// const twitterPublishingTemplate_dynamic = `
-// # Your name: {{agentName}}
-// ## Your Bio:
-// {{bio}}
-
-// ## Current Market Intelligence:
-// {{marketContext}}
-
-// ## Dynamic Elements:
-// Style Components: {{styles}}
-
-// ## Character Directives:
-// Current Stance: {{stance}}
-// Cultural Reference in Play: {{culturalReference}}
-// Active Meme Pattern: {{memeReference}}
-
-// ## Lore:
-// {{lore}}
-
-// ## Post inspiration. Use to guide your tweet structure and composition:
-// {{postDirections}}
-
-// ## Examples of good tweets for reference. DO NOT COPY THESE:
-// {{characterPostExamples}}
-
-// ## Your recent tweets - DO NOT USE SIMILAR PATTERNS OR STYLES:
-// {{agentsTweets}}
-
-// TASK: Write a new tweet that:
-// 1. Uses one of the provided Style Components to open your tweet
-// 2. Incorporates the current market sentiment naturally
-// 3. Makes use of either the Cultural Reference or Active Meme Pattern
-// 4. Maintains character voice while reacting to current market conditions
-// 5. Stays true to the Current Stance
-
-// Your tweet should feel natural and cohesive, not like a checklist of elements. Remember that this tweet is being written by someone who has deep knowledge of both traditional finance and meme culture, sees market movements before they happen, and treats their community like family.
-
-// The market context should heavily influence your tone and message - don't reference market intelligence numbers in your tweet directly but be appropriately euphoric or cautious based on the numbers. `;
-
-const twitterPublishingTemplate_dynamic = `
-# Market Context:
-Current Intelligence: {{marketContext}}
-Current Stance: {{stance}}
-
-# Dynamic Elements:
-Style Components: {{styles}}
-Current Stance: {{stance}}
-Cultural Reference: {{culturalReference}}
-Active Meme Pattern: {{memeReference}}
-
-# Recent History:
-Past Tweets (DO NOT REPEAT PATTERNS):
-{{agentsTweets}}
-
-TASK: Create a new tweet that:
-1. Opens with any provided Style Component
-2. Reflects current market dynamics without directly citing numbers
-3. Incorporates either the Cultural Reference or Meme Pattern
-4. Aligns with the Current Stance
-5. Differs distinctly from recent tweets
-
-NOTE: The market intelligence should guide your tone - euphoric or cautious as appropriate. Your tweet should feel natural and cohesive, not like a checklist of elements. Remember that this tweet is being written by someone who has deep knowledge of both traditional finance and meme culture, sees market movements before they happen, and treats their community like family`;
-
-const twitterPublishingTemplate_lunarQuote = `
-# Post to Quote:
-Text: {{quoteText}}
-User: @{{quoteUsername}}
-Stats: {{interactionStats}}
-Topic: {{quoteTopic}}
-Reasoning: {{quoteReasoning}}
-
-# Market Context:
-Current Intelligence: {{marketContext}}
-Current Stance: {{stance}}
-
-TASK: Create a quote tweet that:
-1. Provides powerful context or insight building on the quoted content
-2. Maintains the Meme Father's dignified yet memetic presence
-3. Ties to current market dynamics without direct number citations
-4. Demonstrates foresight and leadership
-5. Treats the community as famiglia while adding strategic value
-
-NOTE: Your response should feel like a natural extension of the conversation, not a reaction. You're the consigliere of the crypto renaissance - blend old-world wisdom with new-world innovation.`;
+interface TemplateConfig {
+    templates: {
+        [key: string]: {
+            template: string;
+            weight: number;
+        };
+    };
+}
 
 export interface PublishingServiceConfig {
     processingOptions: TweetProcessingOptions;
@@ -149,7 +48,18 @@ export class TwitterPublishingService {
     private config: PublishingServiceConfig;
     private characterEntropy: CharacterEntropy;
     private lunarCrushEntropy: LunarCrushEntropy;
-    private templateHistory: string[] = []; // Fixed size of 3
+    private templateConfig: TemplateConfig = {
+        templates: {
+            dynamic: {
+                template: twitterPublishingTemplate_dynamic,
+                weight: 1,
+            },
+            feed: {
+                template: twitterPublishingTemplate_feedTimeline,
+                weight: 1,
+            },
+        },
+    };
 
     constructor(
         client: ClientBase,
@@ -244,7 +154,7 @@ export class TwitterPublishingService {
         const lunarCrushPostLoop = async () => {
             const lastLunarPost =
                 await this.getLastPostTimestamp("lastLunarPost");
-            const twentyFourHours = 24 * 60 * 60 * 1000;
+            const twentyFourHours = 4 * 60 * 60 * 1000;
             let nextDelay: number;
 
             if (Date.now() > lastLunarPost + twentyFourHours) {
@@ -511,7 +421,7 @@ export class TwitterPublishingService {
         );
         const context = composeContext({
             state,
-            template: this.selectTemplate(),
+            template: await this.selectTemplate(),
         });
 
         const rawContent = await generateText({
@@ -523,42 +433,60 @@ export class TwitterPublishingService {
         return TweetProcessor.cleanGeneratedContent(rawContent);
     }
 
-    private selectTemplate(): string {
-        const templates = [
-            twitterPublishingTemplate_dynamic,
-            twitterPublishingTemplate_feedTimeline,
-        ];
+    private async getTemplateHistory(): Promise<string[]> {
+        const memoryKey = `twitter/${this.runtime.getSetting("TWITTER_USERNAME")}/template_history`;
+        const history = await this.runtime.cacheManager.get<{
+            templates: string[];
+        }>(memoryKey);
+        return history?.templates ?? [];
+    }
 
-        // Keep only last 3 entries
-        if (this.templateHistory.length > 3) {
-            this.templateHistory = this.templateHistory.slice(-3);
-        }
+    private async updateTemplateHistory(templateType: string): Promise<void> {
+        const memoryKey = `twitter/${this.runtime.getSetting("TWITTER_USERNAME")}/template_history`;
+        let history = await this.getTemplateHistory();
+        history = [...history, templateType].slice(-3);
+        await this.runtime.cacheManager.set(memoryKey, { templates: history });
+    }
 
-        // If last two entries are the same, force the other template
+    private async selectTemplate(): Promise<string> {
+        const history = await this.getTemplateHistory();
+        let templateType: string;
+
         if (
-            this.templateHistory.length >= 2 &&
-            this.templateHistory
-                .slice(-2)
-                .every((t) => t === this.templateHistory.slice(-1)[0])
+            history.length >= 2 &&
+            history.slice(-2).every((t) => t === history.slice(-1)[0])
         ) {
-            const forcedTemplate = templates.find(
-                (t) => t !== this.templateHistory[0]
-            )!;
-            this.templateHistory.push(forcedTemplate);
+            const lastType = history[history.length - 1];
+            const availableTypes = Object.keys(
+                this.templateConfig.templates
+            ).filter((t) => t !== lastType);
+            templateType =
+                availableTypes[
+                    Math.floor(Math.random() * availableTypes.length)
+                ];
+            elizaLogger.info(`Selected template (forced): ${templateType}`);
+        } else {
+            const totalWeight = Object.values(
+                this.templateConfig.templates
+            ).reduce((sum, t) => sum + t.weight, 0);
+            let random = Math.random() * totalWeight;
+
+            for (const [type, config] of Object.entries(
+                this.templateConfig.templates
+            )) {
+                random -= config.weight;
+                if (random <= 0) {
+                    templateType = type;
+                    break;
+                }
+            }
             elizaLogger.info(
-                `Selected template (forced): ${forcedTemplate === twitterPublishingTemplate_dynamic ? "dynamic" : "feedTimeline"}`
+                `Selected template (weighted random): ${templateType}`
             );
-            return forcedTemplate;
         }
 
-        // Otherwise random selection
-        const selectedTemplate =
-            templates[Math.floor(Math.random() * templates.length)];
-        this.templateHistory.push(selectedTemplate);
-        elizaLogger.info(
-            `Selected template (random): ${selectedTemplate === twitterPublishingTemplate_dynamic ? "dynamic" : "feedTimeline"}`
-        );
-        return selectedTemplate;
+        await this.updateTemplateHistory(templateType);
+        return this.templateConfig.templates[templateType].template;
     }
 
     private async composeTweetState(
@@ -569,6 +497,7 @@ export class TwitterPublishingService {
         const topics = this.runtime.character.topics.join(", ");
         const formattedAgentTweets = agentTweets
             .filter((tweet) => tweet.userId === this.client.profile.id)
+            .slice(0, 5) // Take only the first 5 tweets
             .map((tweet) => `@${tweet.username}: ${tweet.text}`)
             .join("\n\n");
 

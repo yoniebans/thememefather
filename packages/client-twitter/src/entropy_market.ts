@@ -2,6 +2,25 @@ import { IAgentRuntime } from "@ai16z/eliza";
 import { elizaLogger } from "@ai16z/eliza";
 import { shuffle } from "lodash";
 
+interface EnhancedMarketSentiment extends MarketSentiment {
+    trendingCoins: string[];
+    topGainersLosers: {
+        gainers: Array<{ symbol: string; percentage: number }>;
+        losers: Array<{ symbol: string; percentage: number }>;
+    };
+    globalMetrics: {
+        activeCryptocurrencies: number;
+        totalMarketCap: number;
+        btcDominance: number;
+        defiVolume: number;
+    };
+    categoryPerformance: Array<{
+        name: string;
+        marketCap: number;
+        change24h: number;
+    }>;
+}
+
 interface MarketSentiment {
     fearGreedIndex: number;
     volumeMetric: number;
@@ -241,7 +260,7 @@ export class CharacterEntropy {
         return `${restItems.join(", ")} and ${lastItem}`;
     }
 
-    private async getMarketSentiment(): Promise<MarketSentiment> {
+    public async getMarketSentiment(): Promise<MarketSentiment> {
         try {
             const [cgResponse, fngResponse, historicalResponse] =
                 await Promise.all([
@@ -304,6 +323,129 @@ export class CharacterEntropy {
             return "a time of strategic accumulation";
         if (sentiment.overallSentiment >= 20) return "maximum wojak pain";
         return "the kind of fear that makes even rare pepes nervous";
+    }
+
+    public async getEnhancedMarketSentiment(): Promise<EnhancedMarketSentiment> {
+        try {
+            const [
+                baseMetrics,
+                trendingResponse,
+                gainersLosersResponse,
+                globalResponse,
+                categoriesResponse,
+            ] = await Promise.all([
+                this.getMarketSentiment(),
+                fetch("https://api.coingecko.com/api/v3/search/trending"),
+                fetch(
+                    "https://api.coingecko.com/api/v3/coins/top_gainers_losers"
+                ),
+                fetch("https://api.coingecko.com/api/v3/global"),
+                fetch("https://api.coingecko.com/api/v3/coins/categories"),
+            ]);
+
+            const [trending, gainersLosers, global, categories] =
+                await Promise.all([
+                    trendingResponse.json(),
+                    gainersLosersResponse.json(),
+                    globalResponse.json(),
+                    categoriesResponse.json(),
+                ]);
+
+            // Get top 3 trending coins
+            const trendingCoins = trending.coins
+                .slice(0, 3)
+                .map((coin) => coin.item.symbol.toUpperCase());
+
+            // Get top 3 gainers and losers
+            const topGainersLosers = {
+                gainers: gainersLosers.top_gainers.slice(0, 3).map((coin) => ({
+                    symbol: coin.symbol.toUpperCase(),
+                    percentage: coin.price_change_percentage_24h,
+                })),
+                losers: gainersLosers.top_losers.slice(0, 3).map((coin) => ({
+                    symbol: coin.symbol.toUpperCase(),
+                    percentage: coin.price_change_percentage_24h,
+                })),
+            };
+
+            // Get top performing categories by 24h change
+            const topCategories = categories
+                .sort(
+                    (a, b) => b.market_cap_change_24h - a.market_cap_change_24h
+                )
+                .slice(0, 3)
+                .map((category) => ({
+                    name: category.name,
+                    marketCap: category.market_cap,
+                    change24h: category.market_cap_change_24h,
+                }));
+
+            return {
+                ...baseMetrics,
+                trendingCoins,
+                topGainersLosers,
+                globalMetrics: {
+                    activeCryptocurrencies: global.data.active_cryptocurrencies,
+                    totalMarketCap: global.data.total_market_cap.usd,
+                    btcDominance: global.data.market_cap_percentage.btc,
+                    defiVolume: global.data.defi_volume_24h,
+                },
+                categoryPerformance: topCategories,
+            };
+        } catch (error) {
+            elizaLogger.error(
+                "Failed to fetch enhanced market sentiment:",
+                error
+            );
+            return {
+                ...(this.lastMarketSentiment || {
+                    fearGreedIndex: 50,
+                    volumeMetric: 50,
+                    overallSentiment: 50,
+                }),
+                trendingCoins: [],
+                topGainersLosers: { gainers: [], losers: [] },
+                globalMetrics: {
+                    activeCryptocurrencies: 0,
+                    totalMarketCap: 0,
+                    btcDominance: 0,
+                    defiVolume: 0,
+                },
+                categoryPerformance: [],
+            };
+        }
+    }
+
+    private getEnhancedMarketSentimentDescription(
+        sentiment: EnhancedMarketSentiment
+    ): string {
+        const baseDescription = this.getMarketSentimentDescription(sentiment);
+
+        // Add trending coins context
+        const trendingContext =
+            sentiment.trendingCoins.length > 0
+                ? `| trending: ${sentiment.trendingCoins.join(", ")}`
+                : "";
+
+        // Add top gainer context
+        const topGainerContext =
+            sentiment.topGainersLosers.gainers.length > 0
+                ? `| chad of the day: ${sentiment.topGainersLosers.gainers[0].symbol} (${sentiment.topGainersLosers.gainers[0].percentage.toFixed(1)}%)`
+                : "";
+
+        // Add top loser context for maximum wojak
+        const topLoserContext =
+            sentiment.topGainersLosers.losers.length > 0
+                ? `| maximum pain: ${sentiment.topGainersLosers.losers[0].symbol} (${sentiment.topGainersLosers.losers[0].percentage.toFixed(1)}%)`
+                : "";
+
+        // Add hot category context
+        const hotCategoryContext =
+            sentiment.categoryPerformance.length > 0
+                ? `| hot sector: ${sentiment.categoryPerformance[0].name} (${sentiment.categoryPerformance[0].change24h.toFixed(1)}%)`
+                : "";
+
+        return `${baseDescription} ${trendingContext} ${topGainerContext} ${topLoserContext} ${hotCategoryContext}`.trim();
     }
 
     private async generateDynamicState() {
@@ -389,14 +531,6 @@ export class CharacterEntropy {
             characterPostExamples: selectedExamples.join("\n"),
             topics: topicsNarrative,
             ...dynamicState,
-            // Clear noise
-            messageDirections: "",
-            recentPosts: "",
-            recentMessages: "",
-            characterMessageExamples: "",
-            goals: "",
-            actors: "",
-            attachments: "",
         };
     }
 

@@ -21,4 +21,4 @@ About {{agentName}}:
 
 TASK: Write a quote tweet that amplifies the original content while adding {{agentName}}'s unique perspective and value. The quote should feel natural and enhance the original message.
 
-Your response should be the exact text to be tweeted, with no additional formatting or explanation.`;
+IMPORTANT:Your response should be the exact text to be tweeted, with no additional formatting or explanation.`;
