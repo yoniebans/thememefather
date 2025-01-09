@@ -4,7 +4,8 @@ import { Content, Memory, UUID } from "@ai16z/eliza";
 import { stringToUuid } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { elizaLogger } from "@ai16z/eliza";
-import { DEFAULT_MAX_TWEET_LENGTH } from "./environment";
+
+const MAX_TWEET_LENGTH = 280; // Updated to Twitter's current character limit
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
@@ -169,11 +170,7 @@ export async function sendTweet(
     twitterUsername: string,
     inReplyTo: string
 ): Promise<Memory[]> {
-    const tweetChunks = splitTweetContent(
-        content.text,
-        Number(client.runtime.getSetting("MAX_TWEET_LENGTH")) ||
-            DEFAULT_MAX_TWEET_LENGTH
-    );
+    const tweetChunks = splitTweetContent(content.text);
     const sentTweets: Tweet[] = [];
     let previousTweetId = inReplyTo;
 
@@ -239,10 +236,15 @@ export async function sendTweet(
     return memories;
 }
 
-function splitTweetContent(content: string, maxLength: number): string[] {
+function splitTweetContent(content: string): string[] {
+    const maxLength = MAX_TWEET_LENGTH;
     const paragraphs = content.split("\n\n").map((p) => p.trim());
     const tweets: string[] = [];
     let currentTweet = "";
+
+    elizaLogger.info("Splitting tweet content", {
+        paragraphs,
+    });
 
     for (const paragraph of paragraphs) {
         if (!paragraph) continue;
@@ -271,6 +273,10 @@ function splitTweetContent(content: string, maxLength: number): string[] {
     if (currentTweet) {
         tweets.push(currentTweet.trim());
     }
+
+    elizaLogger.info("Split tweet content", {
+        tweets,
+    });
 
     return tweets;
 }
