@@ -16,9 +16,7 @@ export const Hero = () => {
         </main>
 
         <p className="text-xl text-muted-foreground md:w-10/12 mx-auto lg:mx-0">
-          Welcome to la famiglia - where AI meets memetic warfare. Every week, a
-          new cultural timestamp is minted into crypto history through our
-          autonomous meme creation system.
+          Welcome to la famiglia - where AI meets memetic warfare. Every week, a new meme is minted into crypto history through our autonomous meme creation system.
         </p>
 
         <div className="space-y-4 md:space-y-0 md:space-x-4">
