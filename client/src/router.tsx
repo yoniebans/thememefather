@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import Layout from "@/Layout";
 import HomePage from "@/pages/HomePage";
 import { Vault } from "@/pages/Vault";
-import { Office } from "@/pages/Office";
+import { Office as Console } from "@/pages/Console";
 import { Kitchen } from "@/pages/Kitchen";
 import { NotFound } from "@/pages/NotFound";
 
@@ -19,8 +19,8 @@ export const router = createBrowserRouter([
                 element: <Vault />,
             },
             {
-                path: "/office",
-                element: <Office />,
+                path: "/console",
+                element: <Console />,
             },
             {
                 path: "/kitchen",

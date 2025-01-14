@@ -17,7 +17,7 @@ export function Vault() {
                 `${API_URL}/bfcb1db4-c738-0c4c-b9a2-b2e6247d6347/memes`
             );
             const data = await res.json();
-            return data.memes as Meme[];
+            return data.memes as Meme[]
         },
     });
 
@@ -25,20 +25,25 @@ export function Vault() {
     const losers = memesData?.filter(meme => meme.status === "ngmi") || [];
 
     return (
-        <main className="min-h-screen w-full bg-black/80">
-            <div className="min-h-screen relative w-full flex flex-col bg-[url('/src/assets/the_vault.png')] bg-cover bg-center bg-no-repeat bg-fixed">
-                <div className="w-full h-full bg-black/10">
-                    <div className="container mx-auto px-4 pt-24">
+        <main className="flex-1 w-full flex">
+            <div className="flex-1 w-full bg-[url('/src/assets/the_vault.png')] bg-cover bg-center bg-no-repeat bg-fixed">
+                <div className="min-h-full w-full bg-black/10">
+                    <div className="container mx-auto px-4 pt-8">
                         {/* Winners Section with Deployment Details */}
                         <div className="mb-12">
                             <div className="mb-4">
                                 <img
                                     src={famigliaImage}
                                     alt="winners"
-                                    className="h-12 w-auto"
+                                    className="h-8 w-auto"
                                 />
                             </div>
                             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                                {winners.length === 0 && (
+                                    <div className="col-span-full text-center p-8 text-zinc-500 bg-black/70 backdrop-blur-sm border border-zinc-800/50 rounded-lg">
+                                        No deployed memes yet...
+                                    </div>
+                                )}
                                 {winners.map((meme) => (
                                     <div
                                         key={meme.id}
@@ -106,10 +111,10 @@ export function Vault() {
                                 <img
                                     src={ngmiImage}
                                     alt="ngmi"
-                                    className="h-12 w-auto"
+                                    className="h-8 w-auto"
                                 />
                             </div>
-                            <div className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 rounded-lg">
+                            <div className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 rounded-lg overflow-x-auto">
                                 <table className="w-full text-white font-mono">
                                     <thead className="border-b border-zinc-800/50">
                                         <tr>
@@ -117,13 +122,19 @@ export function Vault() {
                                             <th className="text-left p-4 text-[#EC4899]">ticker</th>
                                             <th className="text-left p-4 text-[#EC4899]">name</th>
                                             <th className="text-left p-4 text-[#EC4899]">description</th>
-                                            <th className="text-left p-4 text-[#EC4899]">author</th>
                                             <th className="text-left p-4 text-[#EC4899]">last scan</th>
                                             <th className="text-left p-4 text-[#EC4899]">image</th>
                                             <th className="text-left p-4 text-[#EC4899]">action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="relative">
+                                    <tbody>
+                                    {losers.length === 0 && (
+                                            <tr>
+                                                <td colSpan={7} className="text-center p-8 text-zinc-500">
+                                                    No NGMI memes yet...
+                                                </td>
+                                            </tr>
+                                        )}
                                         {losers.map((meme) => (
                                             <tr
                                                 key={meme.id}
@@ -156,12 +167,6 @@ export function Vault() {
                                                     <div className="truncate">
                                                         {meme.description || '-'}
                                                     </div>
-                                                </td>
-                                                <td
-                                                    className="p-4 text-zinc-400 cursor-pointer whitespace-nowrap"
-                                                    onClick={() => setSelectedMeme(meme)}
-                                                >
-                                                    {meme.author}
                                                 </td>
                                                 <td
                                                     className="p-4 text-zinc-500 cursor-pointer whitespace-nowrap"

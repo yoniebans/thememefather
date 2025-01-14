@@ -23,19 +23,19 @@ export function Kitchen() {
     const pendingMemes = memesData?.filter(meme => meme.status === "pending") || [];
 
     return (
-        <main className="min-h-screen w-full">
-            <div className="min-h-screen relative w-full flex flex-col bg-[url('/src/assets/restaurant_kitchen.png')] bg-cover bg-center bg-no-repeat bg-fixed">
-                <div className="w-full h-full">
-                    <div className="container mx-auto px-4 pt-24">
+        <main className="flex-1 w-full flex">
+            <div className="flex-1 w-full bg-[url('/src/assets/restaurant_kitchen.png')] bg-cover bg-center bg-no-repeat bg-fixed">
+                <div className="min-h-full w-full bg-black/10">
+                    <div className="container mx-auto px-4 pt-8">
                         <div className="mb-12">
                             <div className="mb-4">
                                 <img
                                     src={cookingImage}
                                     alt="cooking"
-                                    className="h-12 w-auto"
+                                    className="h-8 w-auto"
                                 />
                             </div>
-                            <div className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 rounded-lg overflow-hidden">
+                            <div className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 rounded-lg overflow-x-auto">
                                 <table className="w-full text-white font-mono">
                                     <thead className="border-b border-zinc-800/50">
                                         <tr>
@@ -50,6 +50,13 @@ export function Kitchen() {
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        {pendingMemes.length === 0 && (
+                                            <tr>
+                                                <td colSpan={8} className="text-center p-8 text-zinc-500">
+                                                    No memes cooking yet...
+                                                </td>
+                                            </tr>
+                                        )}
                                         {pendingMemes.map((meme) => (
                                             <tr
                                                 key={meme.id}

@@ -45,7 +45,7 @@ const routeList: RouteProps[] = [
     type: 'section'
   },
   {
-    href: "/office",
+    href: "/console",
     label: "Console",
     type: 'page'
   },

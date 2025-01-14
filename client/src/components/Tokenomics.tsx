@@ -3,10 +3,12 @@ import { PieChart, Pie, ResponsiveContainer, Sector } from "recharts";
 const data = [
   { name: "LP partners", value: 36, fill: "#166534" }, // green-800
   { name: "Partners", value: 24, fill: "#15803d" }, // green-700
-  { name: "ai16z Partners", value: 10, fill: "#16a34a" }, // green-600
-  { name: "Aethir Stakers", value: 10, fill: "#22c55e" }, // green-500
-  { name: "Daos.fun", value: 10, fill: "#4ade80" }, // green-400
-  { name: "Public", value: 10, fill: "#86efac" }, // green-300
+  { name: "Team", value: 10, fill: "#16a34a" }, // green-600
+  { name: "Marketing", value: 10, fill: "#22c55e" }, // green-500
+  { name: "ai16z Partners", value: 5, fill: "#4ade80" }, // green-400
+  { name: "Aethir Stakers", value: 5, fill: "#86efac" }, // green-300
+  { name: "Daos.fun", value: 5, fill: "#bbf7d0" }, // green-200
+  { name: "Public", value: 5, fill: "#dcfce7" }, // green-100
 ];
 
 interface RenderLabelProps {

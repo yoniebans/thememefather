@@ -5,8 +5,8 @@ export const Footer = () => {
     <footer id="footer">
       <hr className="w-11/12 mx-auto" />
 
-      <section className="container py-20 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-12 gap-y-8">
-        <div className="col-span-full xl:col-span-1">
+      <section className="container py-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-8 gap-x-4 gap-y-6">
+        <div className="col-span-full xl:col-span-4">
           <a
             rel="noreferrer noopener"
             href="/"
@@ -16,8 +16,8 @@ export const Footer = () => {
           </a>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="font-bold text-lg">Follow Us</h3>
+        <div className="flex flex-col gap-1 xl:col-span-1 xl:col-start-6">
+          <h3 className="font-bold text-base mb-1">Follow Us</h3>
           <div>
             <a
               rel="noreferrer noopener"
@@ -41,8 +41,8 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="font-bold text-lg">Interaction</h3>
+        <div className="flex flex-col gap-1 xl:col-span-1 xl:col-start-7">
+          <h3 className="font-bold text-base mb-1">Interaction</h3>
           <div>
             <a
               rel="noreferrer noopener"
@@ -66,8 +66,8 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="font-bold text-lg">About</h3>
+        <div className="flex flex-col gap-1 xl:col-span-1 xl:col-start-8">
+          <h3 className="font-bold text-base mb-1">About</h3>
           <div>
             <a
               rel="noreferrer noopener"
@@ -100,7 +100,7 @@ export const Footer = () => {
         </div>
       </section>
 
-      <section className="container pb-14 text-center">
+      <section className="container pb-8 text-center">
         <h3>&copy; 2024 thememefather</h3>
       </section>
     </footer>
