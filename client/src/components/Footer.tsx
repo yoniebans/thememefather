@@ -1,29 +1,108 @@
-interface FooterProps {
-    nextScan: string;
-    nextLaunch: string;
-}
+import fontboltLogo from "../assets/fontbolt.png";
 
-export function Footer({ nextScan, nextLaunch }: FooterProps) {
-    return (
-        <div className="fixed bottom-0 w-full py-2 font-mono text-xs font-bold bg-black/10 backdrop-blur-sm">
-            <div className="container mx-auto px-4" style={{ marginRight: 0 }}>
-                <div className="flex justify-end">
-                    <div className="flex flex-col gap-2 text-[#EC4899] text-right">
-                        <div className="flex items-center justify-end gap-2">
-                            <div className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse" />
-                            <div>
-                                next scan: {nextScan.split(' ')[0]}
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-2">
-                            <div className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse" />
-                            <div>
-                                next launch: {nextLaunch.split(' ')[0]}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+export const Footer = () => {
+  return (
+    <footer id="footer">
+      <hr className="w-11/12 mx-auto" />
+
+      <section className="container py-20 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-12 gap-y-8">
+        <div className="col-span-full xl:col-span-1">
+          <a
+            rel="noreferrer noopener"
+            href="/"
+            className="font-bold text-xl flex items-center gap-2"
+          >
+            <img src={fontboltLogo} alt="The Meme Father" className="h-8" />
+          </a>
         </div>
-    );
-}
+
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold text-lg">Follow Us</h3>
+          <div>
+            <a
+              rel="noreferrer noopener"
+              href="https://github.com/yoniebans/thememefather"
+              target="_blank"
+              className="opacity-60 hover:opacity-100"
+            >
+              Github
+            </a>
+          </div>
+
+          <div>
+            <a
+              rel="noreferrer noopener"
+              href="https://x.com/the_meme_father"
+              target="_blank"
+              className="opacity-60 hover:opacity-100"
+            >
+              Twitter
+            </a>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold text-lg">Interaction</h3>
+          <div>
+            <a
+              rel="noreferrer noopener"
+              href="https://thememefather.com/office"
+              target="_blank"
+              className="opacity-60 hover:opacity-100"
+            >
+              Web
+            </a>
+          </div>
+
+          <div>
+            <a
+              rel="noreferrer noopener"
+              href="https://x.com/the_meme_father"
+              target="_blank"
+              className="opacity-60 hover:opacity-100"
+            >
+              Twitter
+            </a>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold text-lg">About</h3>
+          <div>
+            <a
+              rel="noreferrer noopener"
+              href="#"
+              className="opacity-60 hover:opacity-100"
+            >
+              DAO
+            </a>
+          </div>
+
+          <div>
+            <a
+              rel="noreferrer noopener"
+              href="#"
+              className="opacity-60 hover:opacity-100"
+            >
+              Tokenomics
+            </a>
+          </div>
+
+          <div>
+            <a
+              rel="noreferrer noopener"
+              href="#"
+              className="opacity-60 hover:opacity-100"
+            >
+              FAQ
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section className="container pb-14 text-center">
+        <h3>&copy; 2024 thememefather</h3>
+      </section>
+    </footer>
+  );
+};

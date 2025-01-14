@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input_old";
 import { useWallet } from "@/context/WalletContext";
 const API_URL = import.meta.env.VITE_API_URL;
 

@@ -32,7 +32,7 @@ export default defineConfig({
             },
         },
         hmr: {
-            overlay: true
+            overlay: true,
         },
     },
 });

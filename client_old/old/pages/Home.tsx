@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
+import { Card } from "@/components/ui/card_old";
 import whatscookingImage from "@/assets/whats_cooking.png";
 import { useState } from "react";
 import { MemeModal } from "@/components/MemeModal";
