@@ -24,7 +24,7 @@ const benefitsList: BenefitProps[] = [
   {
     title: "The Holy Grail",
     description:
-      "In the realm of memes, one viral moment can feed generations. Our AI's tireless pursuit of the perfect cultural timestamp means the whole famiglia wins when lightning strikes.",
+      "In the realm of memes, one viral moment can feed generations. The agent's tireless pursuit of the perfect cultural snapshot means the whole famiglia wins when lightning strikes.",
     icon: <Brain className="w-6 h-6" />,
   },
 ];

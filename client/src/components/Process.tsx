@@ -30,7 +30,7 @@ const features: FeatureProps[] = [
     icon: <ChartBar className="w-8 h-8 text-primary" />,
     title: "DAO Benefits",
     description:
-      "Holders gain exposure to all launched memes through the Meme Father's dev allocation.",
+      "Holders gain exposure to all launched memes through the Meme Father DAO.",
   },
 ];
 
@@ -59,7 +59,7 @@ export const Process = () => {
                 {title}
               </CardTitle>
             </CardHeader>
-            <CardContent>{description}</CardContent>
+            <CardContent className="text-muted-foreground">{description}</CardContent>
           </Card>
         ))}
       </div>

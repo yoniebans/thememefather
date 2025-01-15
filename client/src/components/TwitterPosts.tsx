@@ -11,6 +11,7 @@ import memefatherpepe from "../assets/memefatherpepe.png";
 import fomc from "../assets/fomc.png";
 import lambo from "../assets/lambo.png";
 import { ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface QuotedTweetProps {
   username: string;
@@ -104,6 +105,8 @@ const tweets: TweetProps[] = [
 ];
 
 export const TwitterPosts = () => {
+  const navigate = useNavigate();
+
   return (
     <section id="testimonials" className="container py-12 sm:py-16">
       <h2 className="text-3xl md:text-4xl font-bold">
@@ -171,7 +174,7 @@ export const TwitterPosts = () => {
                 {comment}
                 {quotedTweet && (
                   <div className="mt-3 rounded-xl border p-4 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-2">
+                    <CardDescription className="flex items-center gap-2">
                       <a
                         href={`https://twitter.com/${quotedTweet.username}`}
                         target="_blank"
@@ -180,10 +183,8 @@ export const TwitterPosts = () => {
                       >
                         @{quotedTweet.username}
                       </a>
-                      <span className="text-muted-foreground">
-                        • {quotedTweet.date}
-                      </span>
-                    </div>
+                      <span>• {quotedTweet.date}</span>
+                    </CardDescription>
                     <div className="mt-1">{quotedTweet.comment}</div>
                   </div>
                 )}
@@ -196,15 +197,13 @@ export const TwitterPosts = () => {
                 )}
                 <div className="mt-3 flex">
                   {vaultUrl && (
-                    <a
-                      href={`https://thememefather.com/vault/${vaultUrl}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => navigate(`/vault/`)}
                       className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
                     >
                       <ExternalLink className="w-3 h-3" />
                       Check in vault
-                    </a>
+                    </button>
                   )}
                   <div className="ml-auto">
                     {tweetUrl && (

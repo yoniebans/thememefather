@@ -1,6 +1,17 @@
 import fontboltLogo from "../assets/fontbolt.png";
+import { Link, useNavigate } from "react-router-dom";
 
 export const Footer = () => {
+  const navigate = useNavigate();
+
+  const handleSectionClick = (href: string) => {
+    navigate('/', { replace: true });
+    setTimeout(() => {
+      const element = document.querySelector(href);
+      element?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   return (
     <footer id="footer">
       <hr className="w-11/12 mx-auto" />
@@ -44,14 +55,12 @@ export const Footer = () => {
         <div className="flex flex-col gap-1 xl:col-span-1 xl:col-start-7">
           <h3 className="font-bold text-base mb-1">Interaction</h3>
           <div>
-            <a
-              rel="noreferrer noopener"
-              href="https://thememefather.com/office"
-              target="_blank"
+            <Link
+              to="/console"
               className="opacity-60 hover:opacity-100"
             >
               Web
-            </a>
+            </Link>
           </div>
 
           <div>
@@ -69,39 +78,44 @@ export const Footer = () => {
         <div className="flex flex-col gap-1 xl:col-span-1 xl:col-start-8">
           <h3 className="font-bold text-base mb-1">About</h3>
           <div>
-            <a
-              rel="noreferrer noopener"
-              href="#"
+            <button
+              onClick={() => handleSectionClick('#about')}
+              className="opacity-60 hover:opacity-100"
+            >
+              Agent
+            </button>
+          </div>
+          <div>
+            <button
+              onClick={() => handleSectionClick('#process')}
+              className="opacity-60 hover:opacity-100"
+            >
+              Process
+            </button>
+          </div>
+
+          <div>
+            <button
+              onClick={() => handleSectionClick('#dao')}
               className="opacity-60 hover:opacity-100"
             >
               DAO
-            </a>
+            </button>
           </div>
 
           <div>
-            <a
-              rel="noreferrer noopener"
-              href="#"
-              className="opacity-60 hover:opacity-100"
-            >
-              Tokenomics
-            </a>
-          </div>
-
-          <div>
-            <a
-              rel="noreferrer noopener"
-              href="#"
+            <button
+              onClick={() => handleSectionClick('#faq')}
               className="opacity-60 hover:opacity-100"
             >
               FAQ
-            </a>
+            </button>
           </div>
         </div>
       </section>
 
-      <section className="container pb-8 text-center">
-        <h3>&copy; 2024 thememefather</h3>
+      <section className="container pb-8">
+        <p className="text-sm opacity-60">&copy; 2025 thememefather</p>
       </section>
     </footer>
   );

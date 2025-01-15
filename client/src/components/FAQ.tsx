@@ -40,7 +40,7 @@ const FAQList: FAQProps[] = [
     category: "Content Ingestion & Processing",
     question: "How does the Meme Father gather content?",
     answer:
-      "The Meme Father ingests content primarily through two initial channels:\n1. Twitter - monitoring crypto and AI-related discussions and trends\n2. A dedicated front-end interface for direct community interaction",
+      "The Meme Father ingests content primarily through two initial channels:\n1. Twitter - monitoring crypto and AI-related discussions and trends\n2. A dedicated front-end interface for direct community interaction (coming soon)",
     value: "content-1",
   },
   {
@@ -69,7 +69,7 @@ const FAQList: FAQProps[] = [
     category: "Meme Competition & Ranking",
     question: "What factors influence the ranking process?",
     answer:
-      "The ranking system incorporates external entropy factors for dynamicism, including:\n- Fear and Greed Index\n- Bitcoin trading volume\n- Additional market indicators (to be added)\nThese external factors ensure the ranking process adapts to real market conditions.",
+      "The ranking system incorporates external entropy factors for dynamicism, including:\n- Fear and Greed Index\n- Bitcoin trading volume\n- Additional market indicators (coming soon)\nThese external factors ensure the ranking process adapts to real market conditions.",
     value: "comp-2",
   },
   {
@@ -84,21 +84,21 @@ const FAQList: FAQProps[] = [
     category: "Launch Process & Tokenomics",
     question: "How are winning memes launched?",
     answer:
-      "The highest-ranking meme of the week is launched on pumpdotfun at a random time during the week. This randomization adds an element of unpredictability and fairness to the launch process.",
+      "The highest-ranking meme of the week is launched on pumpdotfun (atm) at the end of the competition. This randomization adds an element of unpredictability and fairness to the launch process.",
     value: "launch-1",
   },
   {
     category: "Launch Process & Tokenomics",
     question: "What's the Meme Father's involvement in launches?",
     answer:
-      "For each launched meme, the Meme Father:\n- Purchases 6.9% of the total supply\n- Adds 50% of this amount as single-sided liquidity\n- Holds the remaining 50% as spot position\nThis 6.9% allocation is owned by the DAO.",
+      "For each launched meme, the Meme Father:\n- Purchases 6.9% of the total supply\n- Adds a chunk of the meme token as single-sided liquidity\n- Holds the rest spot\nThis 6.9% allocation is owned by the DAO.",
     value: "launch-2",
   },
   {
     category: "Launch Process & Tokenomics",
     question: "How often are memes launched?",
     answer:
-      "Memes are launched weekly, potentially resulting in 52 memes per year, each representing a captured moment in crypto culture from the perspective of an AI agent.",
+      "Memes are launched weekly to start, potentially resulting in 52 memes per year",
     value: "launch-3",
   },
   // DAO Structure & Benefits
@@ -106,36 +106,36 @@ const FAQList: FAQProps[] = [
     category: "DAO Structure & Benefits",
     question: "What does DAO membership represent?",
     answer:
-      "DAO holders gain exposure to all memes created by the Meme Father through his 6.9% development purchase. This effectively provides diversified exposure across all launched memes (potentially 52 per year).",
+      "DAO holders gain exposure to all memes created by the Meme Father through the minting process. This effectively provides diversified exposure across all launched memes.",
     value: "dao-1",
   },
   {
     category: "DAO Structure & Benefits",
     question: "How is the DAO sustainable?",
     answer:
-      "The DAO's sustainability is supported by:\n- The 50% LP contribution from each meme launch\n- Initial fundraise of 210 (units)\n- Continuous weekly meme launches creating new opportunities\n- Self-sustaining ecosystem through LP fees and trading activity",
+      "The DAO's sustainability is supported by:\n- Initial daos.fun fundraise\n- Continuous weekly meme launches creating new opportunities\n- LP fees and trading activity of memes launched",
     value: "dao-2",
   },
   {
     category: "DAO Structure & Benefits",
     question: "What are the incentives for participating in the DAO?",
     answer:
-      "Key incentives include:\n1. Exposure to a portfolio of AI-created memes\n2. Participation in an innovative AI-driven content creation system\n3. Access to a self-sustaining ecosystem of meme launches\n4. Involvement in a unique experiment combining AI, memes, and crypto culture",
+      "Key incentives include:\n1. Exposure to a portfolio of AI-created memes\n2. Participation in an innovative AI-driven content creation system\n3. Access to ground floor entry on memes launched",
     value: "dao-3",
   },
   // Technical & Operational
   {
     category: "Technical & Operational",
-    question: "How does the Meme Father maintain context?",
+    question: "What is the meme father built on?",
     answer:
-      "Previously created memes are injected into the Meme Father's context, allowing him to reference and use them in posts and interactions, creating a coherent and evolving narrative.",
+      "The meme father is an ai16z eliza fork kept up to date with the latest changes. It includes customisations such as a frontend terminal and backend meme creation pipeline.",
     value: "tech-1",
   },
   {
     category: "Technical & Operational",
     question: "What makes this project unique?",
     answer:
-      "This project represents a novel intersection of:\n- AI-driven content creation\n- Automated market making\n- Cultural timestamp creation\n- Community-driven content inspiration\n- Systematic meme evaluation and launch process",
+      "This project represents a novel intersection of:\n- AI-driven content creation\n- Cultural snapshots via memes\n- Community-driven content inspiration\n- Systematic meme evaluation and launching",
     value: "tech-2",
   },
   {
@@ -168,7 +168,7 @@ export const FAQ = () => {
       <Accordion type="single" collapsible className="w-full">
         {Object.entries(groupedFAQs).map(([category, faqs]) => (
           <AccordionItem key={category} value={category}>
-            <AccordionTrigger className="text-2xl font-bold">
+            <AccordionTrigger className="text-xl font-bold">
               {category}
             </AccordionTrigger>
             <AccordionContent>

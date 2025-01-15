@@ -8,7 +8,7 @@ export const Statistics = () => {
   const stats: statsProps[] = [
     {
       title: "Launches",
-      quantity: "52",
+      quantity: "~ 52",
       description: "Memes / Year",
     },
     {
@@ -18,12 +18,12 @@ export const Statistics = () => {
     },
     {
       title: "Strategy",
-      quantity: "50 / 50",
+      quantity: "Dynamic",
       description: "LP / Spot",
     },
     {
       title: "Memes Ranked",
-      quantity: "1x",
+      quantity: "1 x",
       description: "Daily",
     },
   ];

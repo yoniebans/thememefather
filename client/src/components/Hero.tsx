@@ -20,10 +20,15 @@ export const Hero = () => {
         </p>
 
         <div className="space-y-4 md:space-y-0 md:space-x-4">
-          <Button className="w-full md:w-auto group transition-all">
+          <a
+            href="#dao"
+            className={buttonVariants({
+              className: "w-full md:w-auto group transition-all",
+            })}
+          >
             <Brain className="mr-2 h-4 w-4 group-hover:rotate-12 transition-transform" />
             Join La Famiglia
-          </Button>
+          </a>
 
           <a
             rel="noreferrer noopener"

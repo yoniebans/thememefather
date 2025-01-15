@@ -15,15 +15,19 @@ export const About = () => {
             <div className="pb-6">
               <h2 className="text-3xl md:text-4xl font-bold">
                 <span className="bg-gradient-to-b from-primary/60 to-primary text-transparent bg-clip-text">
-                  The Agent
+                  Agent
                 </span>
+                {" "}: The Meme Father
               </h2>
               <p className="text-xl text-muted-foreground mt-4">
-                The digital don; an AI agent bridging traditional finance with
+                An AI agent bridging traditional finance with
                 crypto culture through the art of memes. Every week, the Meme
                 Father distills the zeitgeist of crypto and AI into carefully
                 crafted memes, launching only the most viral and culturally
-                significant pieces. With 6.9% of each launch added to the DAO's
+                significant pieces.
+              </p>
+              <p className="text-xl text-muted-foreground mt-4">
+                With 6.9% of each launch added to the DAO's
                 portfolio, holders gain exposure to a curated collection of
                 AI-generated cultural snapshots, creating a unique intersection
                 of artificial intelligence, memetic theory, and market

@@ -45,8 +45,8 @@ const renderLabel = (props: RenderLabelProps) => {
   } = props;
 
   // Adjust font sizes for better readability
-  const labelFontSize = isMobile ? "11px" : "14px";
-  const percentFontSize = isMobile ? "10px" : "12px";
+  const labelFontSize = isMobile ? "12px" : "16px";
+  const percentFontSize = isMobile ? "11px" : "14px";
   const labelOffset = isMobile ? 15 : 30;
   const lineLength = isMobile ? 15 : 22;
 
@@ -79,15 +79,15 @@ const renderLabel = (props: RenderLabelProps) => {
         x={ex + (cos >= 0 ? 1 : -1) * 12}
         y={ey}
         textAnchor={textAnchor}
-        fill="#333"
-        style={{ fontSize: labelFontSize, fontWeight: 600 }}
+        fill="#555"
+        style={{ fontSize: labelFontSize, fontWeight: 500 }}
       >
         {payload.name}
       </text>
       <text
         x={ex + (cos >= 0 ? 1 : -1) * 12}
         y={ey}
-        dy={16}
+        dy={18}
         textAnchor={textAnchor}
         fill="#999"
         style={{ fontSize: percentFontSize }}

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -48,8 +48,7 @@ const routeList: RouteProps[] = [
   {
     href: "/console",
     label: "Console",
-    type: 'page',
-    desktopOnly: true
+    type: 'page'
   },
   {
     href: "/kitchen",
@@ -67,17 +66,24 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isHomePage = location.pathname === '/';
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // 768px is the md breakpoint in Tailwind
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  const handleSectionClick = (href: string) => {
+    setIsOpen(false);
+    if (!isHomePage) {
+      // If we're not on the homepage, navigate and then scroll
+      navigate('/', { replace: true });
+      setTimeout(() => {
+        const element = document.querySelector(href);
+        element?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      // If we're already on the homepage, just scroll
+      const element = document.querySelector(href);
+      element?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const renderNavItem = ({ href, label, type, desktopOnly }: RouteProps) => {
     // Skip rendering if it's desktop-only and we're on mobile
@@ -85,31 +91,21 @@ export const Navbar = () => {
       return null;
     }
 
-    // For section links when not on homepage, prefix with '/'
-    if (!isHomePage && type === 'section') {
+    // For section links, use the handleSectionClick
+    if (type === 'section') {
       return (
-        <Link
+        <button
           key={label}
-          to={`/${href}`}
+          onClick={() => handleSectionClick(href)}
           className={buttonVariants({ variant: "ghost" })}
-          onClick={() => setIsOpen(false)}
         >
           {label}
-        </Link>
+        </button>
       );
     }
 
-    // For section links on homepage or regular page links
-    return type === 'section' ? (
-      <a
-        key={label}
-        href={href}
-        className={buttonVariants({ variant: "ghost" })}
-        onClick={() => setIsOpen(false)}
-      >
-        {label}
-      </a>
-    ) : (
+    // For regular page links, use Link component
+    return (
       <Link
         key={label}
         to={href}
