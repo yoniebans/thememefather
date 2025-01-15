@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 interface TokenCardProps {
   ticker: string;
   score: string;
@@ -20,12 +22,8 @@ export const FannedImages = ({ topToken, bottomToken }: FannedImagesProps) => {
         className="absolute w-full h-full transform -rotate-15 origin-bottom-left"
         style={{ transform: "rotate(-15deg)" }}
       >
-        <a
-          href={
-            bottomToken.vaultUrl
-              ? `https://thememefather.com/vault/${bottomToken.vaultUrl}`
-              : "#"
-          }
+        <Link
+          to="/vault"
           className="block w-full h-full"
         >
           <div className="w-full h-full bg-card rounded-xl overflow-hidden border shadow-lg">
@@ -38,12 +36,12 @@ export const FannedImages = ({ topToken, bottomToken }: FannedImagesProps) => {
             </div>
             <div className="p-4 h-[40%] space-y-2">
               <div className="flex justify-between items-center">
-                <div className="text-sm font-mono">
+                <div className="text-sm ">
                   <span className="text-primary">{bottomToken.score}</span> | $
                   {bottomToken.ticker}
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground font-mono">
+              <div className="text-xs text-muted-foreground ">
                 by {bottomToken.tokenId}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -52,7 +50,7 @@ export const FannedImages = ({ topToken, bottomToken }: FannedImagesProps) => {
               </div>
             </div>
           </div>
-        </a>
+        </Link>
       </div>
 
       {/* Top card */}
@@ -60,12 +58,8 @@ export const FannedImages = ({ topToken, bottomToken }: FannedImagesProps) => {
         className="absolute w-full h-full transform rotate-15 origin-bottom-left left-[70px] -top-[30px]"
         style={{ transform: "rotate(15deg)" }}
       >
-        <a
-          href={
-            topToken.vaultUrl
-              ? `https://thememefather.com/vault/${topToken.vaultUrl}`
-              : "#"
-          }
+        <Link
+          to="/vault"
           className="block w-full h-full"
         >
           <div className="w-full h-full bg-card rounded-xl overflow-hidden border shadow-lg">
@@ -78,12 +72,12 @@ export const FannedImages = ({ topToken, bottomToken }: FannedImagesProps) => {
             </div>
             <div className="p-4 h-[40%] space-y-2">
               <div className="flex justify-between items-center">
-                <div className="text-sm font-mono">
+                <div className="text-sm ">
                   <span className="text-primary">{topToken.score}</span> | $
                   {topToken.ticker}
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground font-mono">
+              <div className="text-xs text-muted-foreground ">
                 by {topToken.tokenId}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -92,7 +86,7 @@ export const FannedImages = ({ topToken, bottomToken }: FannedImagesProps) => {
               </div>
             </div>
           </div>
-        </a>
+        </Link>
       </div>
     </div>
   );

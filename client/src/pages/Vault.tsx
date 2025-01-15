@@ -47,7 +47,7 @@ export function Vault() {
                                 {winners.map((meme) => (
                                     <div
                                         key={meme.id}
-                                        className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 shadow-2xl text-white font-mono cursor-pointer transition-all hover:scale-[1.02] rounded-lg p-4"
+                                        className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 shadow-2xl text-white  cursor-pointer transition-all hover:scale-[1.02] rounded-lg p-4"
                                         onClick={() => setSelectedMeme(meme)}
                                     >
                                         <div className="space-y-4">
@@ -115,16 +115,16 @@ export function Vault() {
                                 />
                             </div>
                             <div className="bg-black/70 backdrop-blur-sm border border-zinc-800/50 rounded-lg overflow-x-auto">
-                                <table className="w-full text-white font-mono">
+                                <table className="w-full text-white">
                                     <thead className="border-b border-zinc-800/50">
-                                        <tr>
-                                            <th className="text-left p-4 text-[#EC4899]">memetic power</th>
-                                            <th className="text-left p-4 text-[#EC4899]">ticker</th>
-                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">name</th>
-                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">description</th>
-                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">last scan</th>
-                                            <th className="text-left p-4 text-[#EC4899]">image</th>
-                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">action</th>
+                                        <tr className="[&>th]:p-4">
+                                            <th className="text-left text-[#EC4899]">memetic power</th>
+                                            <th className="text-left text-[#EC4899]">ticker</th>
+                                            <th className="hidden md:table-cell text-left text-[#EC4899]">name</th>
+                                            <th className="hidden md:table-cell text-left text-[#EC4899]">description</th>
+                                            <th className="hidden md:table-cell text-left text-[#EC4899]">last scan</th>
+                                            <th className="text-left text-[#EC4899]">image</th>
+                                            <th className="hidden md:table-cell text-left text-[#EC4899]">action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -138,38 +138,33 @@ export function Vault() {
                                         {losers.map((meme) => (
                                             <tr
                                                 key={meme.id}
-                                                className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors"
+                                                className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors [&>td]:px-4 [&>td]:py-2"
                                             >
-                                                <td
-                                                    className="p-4 text-green-500 cursor-pointer whitespace-nowrap"
+                                                <td className="text-green-500 cursor-pointer whitespace-nowrap"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     {meme.votes.toString().padStart(3, '0')}
                                                 </td>
-                                                <td
-                                                    className="p-4 text-[#EC4899] cursor-pointer whitespace-nowrap"
+                                                <td className="text-[#EC4899] cursor-pointer whitespace-nowrap"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     {meme.ticker}
                                                 </td>
-                                                <td
-                                                    className="hidden md:table-cell p-4 text-zinc-300 cursor-pointer max-w-[200px]"
+                                                <td className="hidden md:table-cell px-4 text-zinc-400 cursor-pointer max-w-[200px]"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     <div className="truncate">
                                                         {meme.name || '-'}
                                                     </div>
                                                 </td>
-                                                <td
-                                                    className="hidden md:table-cell p-4 text-zinc-400 cursor-pointer max-w-[300px]"
+                                                <td className="hidden md:table-cell px-4 text-zinc-400 cursor-pointer max-w-[300px]"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     <div className="truncate">
                                                         {meme.description || '-'}
                                                     </div>
                                                 </td>
-                                                <td
-                                                    className="hidden md:table-cell p-4 text-zinc-500 cursor-pointer whitespace-nowrap"
+                                                <td className="hidden md:table-cell px-4 text-zinc-400 cursor-pointer whitespace-nowrap"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     {meme.ranking_details?.timestamp
@@ -177,8 +172,7 @@ export function Vault() {
                                                         : <span>soon<sup>tm</sup></span>
                                                     }
                                                 </td>
-                                                <td
-                                                    className="p-4 cursor-pointer"
+                                                <td className="px-4 cursor-pointer"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     {meme.url && (
@@ -194,7 +188,7 @@ export function Vault() {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="hidden md:table-cell p-4 whitespace-nowrap">
+                                                <td className="hidden md:table-cell px-4 whitespace-nowrap">
                                                     <div className="relative group">
                                                         <Button
                                                             variant="outline"
@@ -205,7 +199,7 @@ export function Vault() {
                                                             audit
                                                         </Button>
                                                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block z-50">
-                                                            <div className="bg-black/70 backdrop-blur-sm text-[#EC4899] text-xs font-mono py-1 px-2 rounded whitespace-nowrap">
+                                                            <div className="bg-black/70 backdrop-blur-sm text-[#EC4899] text-xs  py-1 px-2 rounded whitespace-nowrap">
                                                                 coming soon
                                                             </div>
                                                         </div>

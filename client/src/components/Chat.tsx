@@ -100,7 +100,7 @@ export default function Chat({ disabled = false }: ChatProps) {
 
     return (
         <div className="w-[100%] h-[75vh] flex items-center">
-            <div className="bg-black/70 backdrop-blur-sm rounded-lg w-full h-full p-6 shadow-2xl border border-zinc-800/50 text-white font-mono">
+            <div className="bg-black/70 backdrop-blur-sm rounded-lg w-full h-full p-6 shadow-2xl border border-zinc-800/50 text-white ">
                 <div className="flex flex-col h-full">
                     {/* Messages - now includes system message */}
                     <div

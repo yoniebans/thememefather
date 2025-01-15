@@ -108,7 +108,7 @@ export function MemeModal({ meme, onClose }: MemeModalProps) {
                 <div className={`flex min-h-full items-center justify-center p-4 ${showHistory ? 'items-start' : ''}`}>
                     <div className="relative w-full max-w-2xl">
                         {/* Main modal */}
-                        <Card className={`bg-black/90 border border-zinc-800 shadow-2xl text-white font-mono w-full relative z-10 transition-transform duration-300 ${showHistory ? '-translate-y-4' : ''}`}>
+                        <Card className={`bg-black/90 border border-zinc-800 shadow-2xl text-white  w-full relative z-10 transition-transform duration-300 ${showHistory ? '-translate-y-4' : ''}`}>
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -212,7 +212,7 @@ export function MemeModal({ meme, onClose }: MemeModalProps) {
                                     transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
                                 }}
                             >
-                                <Card className="bg-black/90 border border-zinc-800 shadow-2xl text-white font-mono w-full max-h-[60vh] overflow-y-auto">
+                                <Card className="bg-black/90 border border-zinc-800 shadow-2xl text-white  w-full max-h-[60vh] overflow-y-auto">
                                     <div className="p-6 space-y-4">
                                         <div className="text-sm text-zinc-400">
                                             <p className="font-bold mb-2">Latest Analysis:</p>

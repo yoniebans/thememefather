@@ -23,7 +23,7 @@ export function Office() {
                                 <WalletButton />
                             </div>
                             <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block z-50">
-                                <div className="bg-black/70 backdrop-blur-sm text-[#EC4899] text-xs font-mono py-1 px-2 rounded whitespace-nowrap">
+                                <div className="bg-black/70 backdrop-blur-sm text-[#EC4899] text-xs py-1 px-2 rounded whitespace-nowrap">
                                     coming soon
                                 </div>
                             </div>
