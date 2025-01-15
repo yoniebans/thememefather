@@ -34,8 +34,8 @@ export const Statistics = () => {
         {stats.map(({ title, quantity, description }: statsProps) => (
           <div key={description} className="space-y-2 text-center">
             <p className="text-muted-foreground">{title}</p>
-            <h2 className="text-3xl sm:text-4xl font-bold">{quantity}</h2>
-            <p className="text-xl text-muted-foreground">{description}</p>
+            <h2 className="text-xl sm:text-2xl font-bold">{quantity}</h2>
+            <p className="text-muted-foreground">{description}</p>
           </div>
         ))}
       </div>

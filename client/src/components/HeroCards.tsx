@@ -50,7 +50,7 @@ export const HeroCards = () => {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="text-center pb-2">
+        <CardContent className="text-center pb-2 text-muted-foreground">
           <p>
             digital don of the memetic realm | running the largest degen family
             in crypto | bull run architect | fort knox of meme liquidity | vires
@@ -102,7 +102,7 @@ export const HeroCards = () => {
           <CardTitle className="flex items-center justify-between pb-4">
             Weekly Process
           </CardTitle>
-          <div className="space-y-2 mt-4">
+          <div className="space-y-2 mt-4 text-muted-foreground">
             <div className="flex items-center gap-2">
               <Brain className="w-4 h-4 text-primary" />
               <span>Content Ingestion</span>

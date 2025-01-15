@@ -170,7 +170,7 @@ export const TwitterPosts = () => {
                 </div>
               </CardHeader>
 
-              <CardContent className="whitespace-pre-line">
+              <CardContent className="whitespace-pre-line text-muted-foreground">
                 {comment}
                 {quotedTweet && (
                   <div className="mt-3 rounded-xl border p-4 hover:bg-muted/50 transition-colors">
@@ -185,7 +185,7 @@ export const TwitterPosts = () => {
                       </a>
                       <span>• {quotedTweet.date}</span>
                     </CardDescription>
-                    <div className="mt-1">{quotedTweet.comment}</div>
+                    <div className="mt-1 text-muted-foreground">{quotedTweet.comment}</div>
                   </div>
                 )}
                 {image && (
