@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import notFoundImage from "@/assets/404.png";
 
 export function NotFound() {
     const navigate = useNavigate();
@@ -9,7 +10,13 @@ export function NotFound() {
             <div className="flex-1 w-full flex flex-col">
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center text-white">
-                        <h1 className="text-4xl mb-4 text-[#EC4899]">404 {">"}</h1>
+                        <div className="mb-4 flex justify-center">
+                            <img
+                                src={notFoundImage}
+                                alt="404"
+                                className="h-8 w-auto"
+                            />
+                        </div>
                         <p className="mb-8">not the alpha you're looking for</p>
                         <Button
                             variant="outline"
