@@ -18,11 +18,20 @@ export function Office() {
                             alt="omerta"
                             className="h-8 w-auto"
                         />
-                        <WalletButton />
+                        <div className="relative group opacity-50">
+                            <div className="pointer-events-none">
+                                <WalletButton />
+                            </div>
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 hidden group-hover:block z-50">
+                                <div className="bg-black/70 backdrop-blur-sm text-[#EC4899] text-xs font-mono py-1 px-2 rounded whitespace-nowrap">
+                                    coming soon
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex-1 flex items-center justify-center">
-                        <Chat disabled={!connected} />
+                        <Chat disabled={true} />
                     </div>
                 </div>
             </div>

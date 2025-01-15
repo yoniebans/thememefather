@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   NavigationMenu,
@@ -21,6 +21,7 @@ interface RouteProps {
   href: string;
   label: string;
   type: 'section' | 'page';
+  desktopOnly?: boolean;
 }
 
 const routeList: RouteProps[] = [
@@ -47,7 +48,8 @@ const routeList: RouteProps[] = [
   {
     href: "/console",
     label: "Console",
-    type: 'page'
+    type: 'page',
+    desktopOnly: true
   },
   {
     href: "/kitchen",
@@ -63,10 +65,26 @@ const routeList: RouteProps[] = [
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
   const isHomePage = location.pathname === '/';
 
-  const renderNavItem = ({ href, label, type }: RouteProps) => {
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // 768px is the md breakpoint in Tailwind
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const renderNavItem = ({ href, label, type, desktopOnly }: RouteProps) => {
+    // Skip rendering if it's desktop-only and we're on mobile
+    if (desktopOnly && isMobile) {
+      return null;
+    }
+
     // For section links when not on homepage, prefix with '/'
     if (!isHomePage && type === 'section') {
       return (

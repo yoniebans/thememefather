@@ -1,14 +1,15 @@
 import { PieChart, Pie, ResponsiveContainer, Sector } from "recharts";
+import { useState, useEffect } from "react";
 
 const data = [
-  { name: "LP partners", value: 36, fill: "#166534" }, // green-800
-  { name: "Partners", value: 24, fill: "#15803d" }, // green-700
-  { name: "Team", value: 10, fill: "#16a34a" }, // green-600
-  { name: "Marketing", value: 10, fill: "#22c55e" }, // green-500
-  { name: "ai16z Partners", value: 5, fill: "#4ade80" }, // green-400
-  { name: "Aethir Stakers", value: 5, fill: "#86efac" }, // green-300
-  { name: "Daos.fun", value: 5, fill: "#bbf7d0" }, // green-200
-  { name: "Public", value: 5, fill: "#dcfce7" }, // green-100
+  { name: "LP partners", value: 36, fill: "#166534" },
+  { name: "Partners", value: 24, fill: "#15803d" },
+  { name: "Team", value: 10, fill: "#16a34a" },
+  { name: "Marketing", value: 10, fill: "#22c55e" },
+  { name: "ai16z Partners", value: 5, fill: "#4ade80" },
+  { name: "Aethir Stakers", value: 5, fill: "#86efac" },
+  { name: "Daos.fun", value: 5, fill: "#bbf7d0" },
+  { name: "Public", value: 5, fill: "#dcfce7" },
 ];
 
 interface RenderLabelProps {
@@ -26,6 +27,7 @@ interface RenderLabelProps {
     fill: string;
   };
   percent: number;
+  isMobile: boolean;
 }
 
 const renderLabel = (props: RenderLabelProps) => {
@@ -39,13 +41,20 @@ const renderLabel = (props: RenderLabelProps) => {
     endAngle,
     payload,
     percent,
+    isMobile,
   } = props;
+
+  // Adjust font sizes for better readability
+  const labelFontSize = isMobile ? "11px" : "14px";
+  const percentFontSize = isMobile ? "10px" : "12px";
+  const labelOffset = isMobile ? 15 : 30;
+  const lineLength = isMobile ? 15 : 22;
 
   const sin = Math.sin(-RADIAN * midAngle);
   const cos = Math.cos(-RADIAN * midAngle);
-  const mx = cx + (outerRadius + 30) * cos;
-  const my = cy + (outerRadius + 30) * sin;
-  const ex = mx + (cos >= 0 ? 1 : -1) * 22;
+  const mx = cx + (outerRadius + labelOffset) * cos;
+  const my = cy + (outerRadius + labelOffset) * sin;
+  const ex = mx + (cos >= 0 ? 1 : -1) * lineLength;
   const ey = my;
   const textAnchor = cos >= 0 ? "start" : "end";
 
@@ -56,14 +65,12 @@ const renderLabel = (props: RenderLabelProps) => {
         cy={cy}
         startAngle={startAngle}
         endAngle={endAngle}
-        innerRadius={outerRadius + 6}
-        outerRadius={outerRadius + 10}
+        innerRadius={outerRadius + (isMobile ? 3 : 6)}
+        outerRadius={outerRadius + (isMobile ? 5 : 10)}
         fill={payload.fill}
       />
       <path
-        d={`M${cx + outerRadius * cos},${
-          cy + outerRadius * sin
-        }L${mx},${my}L${ex},${ey}`}
+        d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${mx},${my}L${ex},${ey}`}
         stroke={payload.fill}
         fill="none"
       />
@@ -73,15 +80,17 @@ const renderLabel = (props: RenderLabelProps) => {
         y={ey}
         textAnchor={textAnchor}
         fill="#333"
+        style={{ fontSize: labelFontSize, fontWeight: 600 }}
       >
         {payload.name}
       </text>
       <text
         x={ex + (cos >= 0 ? 1 : -1) * 12}
         y={ey}
-        dy={18}
+        dy={16}
         textAnchor={textAnchor}
         fill="#999"
+        style={{ fontSize: percentFontSize }}
       >
         {`${percent * 100}%`}
       </text>
@@ -90,18 +99,30 @@ const renderLabel = (props: RenderLabelProps) => {
 };
 
 export const TokenomicsChart = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   return (
-    <div className="h-[500px] w-full">
+    <div className="h-[500px] md:h-[600px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
             cx="50%"
             cy="50%"
-            innerRadius={120}
-            outerRadius={160}
+            innerRadius={isMobile ? 70 : 120}
+            outerRadius={isMobile ? 90 : 160}
             dataKey="value"
-            label={renderLabel}
+            label={(props) => renderLabel({ ...props, isMobile })}
             labelLine={false}
           />
         </PieChart>

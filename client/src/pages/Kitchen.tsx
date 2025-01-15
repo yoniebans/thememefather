@@ -41,12 +41,12 @@ export function Kitchen() {
                                         <tr>
                                             <th className="text-left p-4 text-[#EC4899]">memetic power</th>
                                             <th className="text-left p-4 text-[#EC4899]">ticker</th>
-                                            <th className="text-left p-4 text-[#EC4899]">name</th>
-                                            <th className="text-left p-4 text-[#EC4899]">description</th>
-                                            <th className="text-left p-4 text-[#EC4899]">author</th>
-                                            <th className="text-left p-4 text-[#EC4899]">last scan</th>
+                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">name</th>
+                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">description</th>
+                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">author</th>
+                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">last scan</th>
                                             <th className="text-left p-4 text-[#EC4899]">image</th>
-                                            <th className="text-left p-4 text-[#EC4899]">action</th>
+                                            <th className="hidden md:table-cell text-left p-4 text-[#EC4899]">action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -75,7 +75,7 @@ export function Kitchen() {
                                                     {meme.ticker}
                                                 </td>
                                                 <td
-                                                    className="p-4 text-zinc-300 cursor-pointer max-w-[200px]"
+                                                    className="hidden md:table-cell p-4 text-zinc-300 cursor-pointer max-w-[200px]"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     <div className="truncate">
@@ -83,7 +83,7 @@ export function Kitchen() {
                                                     </div>
                                                 </td>
                                                 <td
-                                                    className="p-4 text-zinc-400 cursor-pointer max-w-[300px]"
+                                                    className="hidden md:table-cell p-4 text-zinc-400 cursor-pointer max-w-[300px]"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     <div className="truncate">
@@ -91,13 +91,13 @@ export function Kitchen() {
                                                     </div>
                                                 </td>
                                                 <td
-                                                    className="p-4 text-zinc-400 cursor-pointer whitespace-nowrap"
+                                                    className="hidden md:table-cell p-4 text-zinc-400 cursor-pointer whitespace-nowrap"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     {meme.author}
                                                 </td>
                                                 <td
-                                                    className="p-4 text-zinc-500 cursor-pointer whitespace-nowrap"
+                                                    className="hidden md:table-cell p-4 text-zinc-500 cursor-pointer whitespace-nowrap"
                                                     onClick={() => setSelectedMeme(meme)}
                                                 >
                                                     {meme.ranking_details?.timestamp
@@ -122,7 +122,7 @@ export function Kitchen() {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="p-4 whitespace-nowrap">
+                                                <td className="hidden md:table-cell p-4 whitespace-nowrap">
                                                     <div className="relative group">
                                                         <Button
                                                             variant="outline"

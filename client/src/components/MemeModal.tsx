@@ -105,8 +105,8 @@ export function MemeModal({ meme, onClose }: MemeModalProps) {
                 ref={modalContainerRef}
                 className={`fixed inset-0 ${showHistory ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
             >
-                <div className={`flex items-start justify-center p-4 ${showHistory ? 'min-h-full' : ''}`}>
-                    <div className="relative w-full max-w-2xl mt-16">
+                <div className={`flex min-h-full items-center justify-center p-4 ${showHistory ? 'items-start' : ''}`}>
+                    <div className="relative w-full max-w-2xl">
                         {/* Main modal */}
                         <Card className={`bg-black/90 border border-zinc-800 shadow-2xl text-white font-mono w-full relative z-10 transition-transform duration-300 ${showHistory ? '-translate-y-4' : ''}`}>
                             <Button
@@ -185,8 +185,8 @@ export function MemeModal({ meme, onClose }: MemeModalProps) {
                                                 !hasRankingData
                                                     ? 'bg-zinc-800/30 cursor-not-allowed'
                                                     : showHistory
-                                                        ? 'bg-[#EC4899]/90 hover:bg-[#EC4899]'
-                                                        : 'bg-[#EC4899]/30 hover:bg-[#EC4899]/50'
+                                                        ? 'bg-[#EC4899]/30 hover:bg-[#EC4899]/50'
+                                                        : 'bg-[#EC4899]/90 hover:bg-[#EC4899]'
                                             }`}
                                             onClick={handleToggleHistory}
                                             disabled={!hasRankingData}
