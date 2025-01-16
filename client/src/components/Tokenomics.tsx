@@ -2,14 +2,12 @@ import { PieChart, Pie, ResponsiveContainer, Sector } from "recharts";
 import { useState, useEffect } from "react";
 
 const data = [
-  { name: "LP partners", value: 36, fill: "#166534" },
-  { name: "Partners", value: 24, fill: "#15803d" },
+  { name: "Liquidity", value: 44, fill: "#166534" },
+  { name: "Core", value: 19, fill: "#15803d" },
   { name: "Team", value: 10, fill: "#16a34a" },
-  { name: "Marketing", value: 10, fill: "#22c55e" },
-  { name: "ai16z Partners", value: 5, fill: "#4ade80" },
-  { name: "Aethir Stakers", value: 5, fill: "#86efac" },
-  { name: "Daos.fun", value: 5, fill: "#bbf7d0" },
-  { name: "Public", value: 5, fill: "#dcfce7" },
+  { name: "Daos.fun", value: 10, fill: "#22c55e" },
+  { name: "Public", value: 10, fill: "#4ade80" },
+  { name: "Future", value: 7, fill: "#86efac" },
 ];
 
 interface RenderLabelProps {
@@ -79,7 +77,7 @@ const renderLabel = (props: RenderLabelProps) => {
         x={ex + (cos >= 0 ? 1 : -1) * 12}
         y={ey}
         textAnchor={textAnchor}
-        fill="#555"
+        fill="#999"
         style={{ fontSize: labelFontSize, fontWeight: 500 }}
       >
         {payload.name}
@@ -92,7 +90,7 @@ const renderLabel = (props: RenderLabelProps) => {
         fill="#999"
         style={{ fontSize: percentFontSize }}
       >
-        {`${percent * 100}%`}
+        {`${Math.round(percent * 100)}%`}
       </text>
     </g>
   );
@@ -113,20 +111,23 @@ export const TokenomicsChart = () => {
 
   return (
     <div className="h-[500px] md:h-[600px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={isMobile ? 70 : 120}
-            outerRadius={isMobile ? 90 : 160}
-            dataKey="value"
-            label={(props) => renderLabel({ ...props, isMobile })}
-            labelLine={false}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+      <h2 className="text-center text-3xl font-semibold text-[#999]">Partners</h2>
+      <div className="h-[90%]">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={isMobile ? 70 : 120}
+              outerRadius={isMobile ? 90 : 160}
+              dataKey="value"
+              label={(props) => renderLabel({ ...props, isMobile })}
+              labelLine={false}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };
