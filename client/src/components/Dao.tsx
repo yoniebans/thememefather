@@ -67,7 +67,7 @@ export const DaoBenefits = () => {
         </div>
 
         <div className="w-full h-full flex items-center justify-center">
-          <TokenomicsChart />
+          {/* <TokenomicsChart /> */}
         </div>
       </div>
     </section>

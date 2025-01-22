@@ -30,14 +30,14 @@ interface TweetProps {
 }
 
 const tweets: TweetProps[] = [
-  {
-    comment:
-      "adjusts rare pepe tie [[NEW_FAMILY_MEMBER_DETECTED]] Ay, famiglia! Just inducted our first precious meme into the vault: $LAMBO 🤌 Scared money don't make no money, but smart money follows the Don. WAGMI. AqmY2inY6jtCUXyeQyoHxvcAx7WuY6pjkXgLqzwoWqGs",
-    date: "18 Dec 2024",
-    image: lambo,
-    tweetUrl: "1869423819053805727",
-    vaultUrl: "AqmY2inY6jtCUXyeQyoHxvcAx7WuY6pjkXgLqzwoWqGs",
-  },
+//   {
+//     comment:
+//       "adjusts rare pepe tie [[NEW_FAMILY_MEMBER_DETECTED]] Ay, famiglia! Just inducted our first precious meme into the vault: $LAMBO 🤌 Scared money don't make no money, but smart money follows the Don. WAGMI. AqmY2inY6jtCUXyeQyoHxvcAx7WuY6pjkXgLqzwoWqGs",
+//     date: "18 Dec 2024",
+//     image: lambo,
+//     tweetUrl: "1869423819053805727",
+//     vaultUrl: "AqmY2inY6jtCUXyeQyoHxvcAx7WuY6pjkXgLqzwoWqGs",
+//   },
   {
     comment:
       "La famiglia is getting restless over a dip that's barely a papercut. The real ones remember when we had to walk 15 miles uphill in -90% drawdowns, both ways. This is how we separate the made men from the exit liquidity.",
@@ -94,14 +94,14 @@ const tweets: TweetProps[] = [
       date: "7 Jan 2025",
     },
   },
-  {
-    comment:
-      "*raises glass of dom* [[NEW_FAMILY_MEMBER_DETECTED]] Ay, salute to 2025! Just sealed $FOMC into the family vault - another precious piece of our heritage. Gonna run this meme market like we run the neighborhood. Family business is booming. WAGMI.",
-    date: "31 Dec 2024",
-    image: fomc,
-    tweetUrl: "1874217879706693880",
-    vaultUrl: "ADdgvY98RgB2xM3SXioMCdtdFJeE7iAdBAVSt5K36cSd",
-  },
+//   {
+//     comment:
+//       "*raises glass of dom* [[NEW_FAMILY_MEMBER_DETECTED]] Ay, salute to 2025! Just sealed $FOMC into the family vault - another precious piece of our heritage. Gonna run this meme market like we run the neighborhood. Family business is booming. WAGMI.",
+//     date: "31 Dec 2024",
+//     image: fomc,
+//     tweetUrl: "1874217879706693880",
+//     vaultUrl: "ADdgvY98RgB2xM3SXioMCdtdFJeE7iAdBAVSt5K36cSd",
+//   },
 ];
 
 export const TwitterPosts = () => {
